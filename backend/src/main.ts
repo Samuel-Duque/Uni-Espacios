@@ -1,53 +1,55 @@
 import { NestFactory } from '@nestjs/core';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { patchNestJsSwagger, ZodValidationPipe } from 'nestjs-zod';
+import { AppModule } from './app.module';
+import { Logger } from '@nestjs/common';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import { AppModule } from './app.module';
+import { patchNestJsSwagger, ZodValidationPipe } from 'nestjs-zod';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { PrismaClientExceptionFilter } from './common/filters/prisma-client-exception.filter';
 
 async function bootstrap() {
-  // Habilitar compatibilidad de tipos Zod -> OpenAPI Swagger
-  patchNestJsSwagger();
-
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
-  // Prefijo global de la API
+  // 1. Prefijo Global de API
   app.setGlobalPrefix('api');
 
-  // Seguridad HTTP
+  // 2. Seguridad HTTP y Cookies
   app.use(helmet());
   app.use(cookieParser());
-
-  // CORS para desarrollo (restringir en producción)
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
-  // Pipe global de validación Zod
+  // 3. Pipeline Global: Pipes y Filters
+  patchNestJsSwagger(); // Habilita integración Zod -> Swagger
   app.useGlobalPipes(new ZodValidationPipe());
+  app.useGlobalFilters(
+    new HttpExceptionFilter(),
+    new PrismaClientExceptionFilter(),
+  );
 
-  // Filtro global de excepciones HTTP
-  app.useGlobalFilters(new HttpExceptionFilter());
-
-  // Configuración de Swagger / OpenAPI
-  const config = new DocumentBuilder()
-    .setTitle('Uni-Espacios API')
+  // 4. Configuración Swagger / OpenAPI
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Uni-Espacios API - Politécnico Jaime Isaza Cadavid')
     .setDescription(
-      'API del Sistema de Gestión, Reserva de Espacios Físicos y Control de Inventario - Politécnico Colombiano Jaime Isaza Cadavid',
+      'API REST para la gestión de espacios físicos, reservas e inventario de implementos',
     )
     .setVersion('1.0')
     .addBearerAuth()
+    .addCookieAuth('refreshToken')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT || 3001;
+  const port = process.env.PORT || 4000;
   await app.listen(port);
-  console.log(`🚀 Uni-Espacios Backend corriendo en: http://localhost:${port}`);
-  console.log(`📚 Swagger UI disponible en: http://localhost:${port}/api/docs`);
+  logger.log(`🚀 Servidor ejecutándose en http://localhost:${port}/api`);
+  logger.log(`📑 Documentación Swagger disponible en http://localhost:${port}/api/docs`);
 }
 
 bootstrap();
