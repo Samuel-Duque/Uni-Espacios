@@ -16,10 +16,24 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // 2. Seguridad HTTP y Cookies
-  app.use(helmet());
+  app.use(
+    helmet({
+      frameguard: { action: 'deny' },
+      noSniff: true,
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+      },
+    }),
+  );
   app.use(cookieParser());
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: [
+      'http://localhost:3000',
+      'https://espacios.elpoli.edu.co',
+      ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : []),
+      ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });

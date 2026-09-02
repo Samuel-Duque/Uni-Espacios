@@ -58,7 +58,7 @@
 | **TSK-301** | Implementar `AuthModule` en NestJS con bcrypt y JWT | Alta | TSK-202 | ✅ DONE | Registro y login validando obligatoriamente el dominio institucional `@elpoli.edu.co`, emisión de tokens y rotación en cookie HttpOnly. |
 | **TSK-302** | Implementar `JwtAuthGuard` y decorador `@CurrentUser` | Alta | TSK-301 | ✅ DONE | Guard extrae y valida token Bearer inyectando el payload del usuario en los controladores, con bypass para metadata `@Public()`. |
 | **TSK-303** | Implementar `RolesGuard` y decorador `@Roles(...)` | Alta | TSK-302 | ✅ DONE | Endpoints protegidos devuelven 403 Forbidden si el rol no coincide, con acceso universal para `SUPERADMIN`. |
-| **TSK-304** | Configurar autenticación y middleware de protección de rutas en Next.js | Media | TSK-102, TSK-302 | 📋 BACKLOG | Contexto de sesión en Next.js, persistencia de tokens seguros y redirecciones automáticas por rol. |
+| **TSK-304** | Configurar autenticación y middleware de protección de rutas en Next.js | Media | TSK-102, TSK-302 | ✅ DONE | Contexto de sesión AuthProvider en Next.js, API client con auto-refresh, middleware RBAC de protección de rutas y formularios de Login/Registro institucional. |
 
 ---
 
