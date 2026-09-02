@@ -1,0 +1,321 @@
+// datasource y generador de cliente
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
+}
+
+// ----------------------------------------------------
+// ENUMS DE DOMINIO
+// ----------------------------------------------------
+
+enum RolUsuario {
+  ESTUDIANTE
+  DOCENTE
+  ADMINISTRATIVO
+  GESTOR_ESPACIO
+  SUPERADMIN
+}
+
+enum TipoEspacio {
+  AULA
+  LABORATORIO
+  AUDITORIO
+  DEPORTIVO
+  SALA_COMPUTO
+}
+
+enum EstadoEspacio {
+  ACTIVO
+  EN_MANTENIMIENTO
+  INACTIVO
+}
+
+enum CategoriaItem {
+  TECNOLOGIA
+  MOBILIARIO
+  DEPORTIVO
+  DIDACTICO
+}
+
+enum EstadoItem {
+  OPTIMO
+  REGULAR
+  DANADO
+  DE_BAJA
+}
+
+enum EstadoPeriodo {
+  PLANIFICACION
+  ACTIVO
+  FINALIZADO
+}
+
+enum EstadoReserva {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  CANCELADA
+  EN_USO
+  FINALIZADA
+}
+
+enum EstadoAprobacion {
+  APROBADA
+  RECHAZADA
+}
+
+enum TipoVerificacion {
+  CHECK_IN
+  CHECK_OUT
+}
+
+enum EstadoGeneralVerificacion {
+  CONFORME
+  NO_CONFORME
+  CON_NOVEDADES
+}
+
+enum EstadoItemVerificacion {
+  PRESENTE_OPTIMO
+  PRESENTE_DANADO
+  FALTANTE
+}
+
+// ----------------------------------------------------
+// MODELOS DE INFRAESTRUCTURA FÍSICA
+// ----------------------------------------------------
+
+model Sede {
+  id        Int      @id @default(autoincrement())
+  nombre    String   @db.VarChar(100)
+  ciudad    String   @db.VarChar(60)
+  direccion String   @db.VarChar(150)
+  creadoEn  DateTime @default(now()) @map("creado_en")
+
+  bloques Bloque[]
+
+  @@map("sedes")
+}
+
+model Bloque {
+  id          Int      @id @default(autoincrement())
+  sedeId      Int      @map("sede_id")
+  codigo      String   @db.VarChar(20)
+  descripcion String?  @db.VarChar(200)
+  creadoEn    DateTime @default(now()) @map("creado_en")
+
+  sede     Sede      @relation(fields: [sedeId], references: [id], onDelete: Restrict)
+  espacios Espacio[]
+
+  @@unique([sedeId, codigo])
+  @@map("bloques")
+}
+
+model Espacio {
+  id                    Int           @id @default(autoincrement())
+  bloqueId              Int           @map("bloque_id")
+  identificador         String        @db.VarChar(30)
+  tipo                  TipoEspacio
+  capacidad             Int
+  piso                  Int?
+  ubicacionDetalle      String?       @map("ubicacion_detalle") @db.VarChar(200)
+  permiteReservaDirecta Boolean       @default(false) @map("permite_reserva_directa")
+  estado                EstadoEspacio @default(ACTIVO)
+  creadoEn              DateTime      @default(now()) @map("creado_en")
+  actualizadoEn         DateTime      @updatedAt @map("actualizado_en")
+
+  bloque      Bloque           @relation(fields: [bloqueId], references: [id], onDelete: Restrict)
+  inventario  ItemInventario[]
+  clasesFijas ClaseFija[]
+  reservas    Reserva[]
+
+  @@unique([bloqueId, identificador])
+  @@index([tipo, estado, capacidad])
+  @@map("espacios")
+}
+
+// ----------------------------------------------------
+// MODELOS DE INVENTARIO Y CONTROL DE IMPLEMENTOS
+// ----------------------------------------------------
+
+model ItemInventario {
+  id            Int           @id @default(autoincrement())
+  espacioId     Int           @map("espacio_id")
+  codigo        String        @db.VarChar(50) // Placa o SKU
+  nombre        String        @db.VarChar(100)
+  categoria     CategoriaItem
+  cantidad      Int           @default(1)
+  estado        EstadoItem    @default(OPTIMO)
+  esCritico     Boolean       @default(false) @map("es_critico")
+  descripcion   String?       @db.VarChar(255)
+  creadoEn      DateTime      @default(now()) @map("creado_en")
+  actualizadoEn DateTime      @updatedAt @map("actualizado_en")
+
+  espacio              Espacio               @relation(fields: [espacioId], references: [id], onDelete: Cascade)
+  detallesVerificacion DetalleVerificacion[]
+
+  @@unique([espacioId, codigo])
+  @@index([categoria, estado])
+  @@map("items_inventario")
+}
+
+// ----------------------------------------------------
+// CALENDARIO ACADÉMICO Y CLASES FIJAS
+// ----------------------------------------------------
+
+model PeriodoAcademico {
+  id          Int           @id @default(autoincrement())
+  codigo      String        @unique @db.VarChar(10) // Ej: "2026-2"
+  fechaInicio DateTime      @map("fecha_inicio") @db.Date
+  fechaFin    DateTime      @map("fecha_fin") @db.Date
+  estado      EstadoPeriodo @default(PLANIFICACION)
+  creadoEn    DateTime      @default(now()) @map("creado_en")
+
+  clasesFijas ClaseFija[]
+
+  @@index([estado, fechaInicio, fechaFin])
+  @@map("periodos_academicos")
+}
+
+model ClaseFija {
+  id         Int      @id @default(autoincrement())
+  espacioId  Int      @map("espacio_id")
+  periodoId  Int      @map("periodo_id")
+  diaSemana  Int      @map("dia_semana") @db.TinyInt // 1=Lunes .. 7=Domingo
+  horaInicio String   @map("hora_inicio") @db.VarChar(5) // "08:00"
+  horaFin    String   @map("hora_fin") @db.VarChar(5) // "10:00"
+  asignatura String   @db.VarChar(100)
+  docente    String   @db.VarChar(100)
+  grupo      String?  @db.VarChar(20)
+  creadoEn   DateTime @default(now()) @map("creado_en")
+
+  espacio Espacio          @relation(fields: [espacioId], references: [id], onDelete: Restrict)
+  periodo PeriodoAcademico @relation(fields: [periodoId], references: [id], onDelete: Cascade)
+
+  @@index([espacioId, periodoId, diaSemana, horaInicio, horaFin])
+  @@map("clases_fijas")
+}
+
+// ----------------------------------------------------
+// USUARIOS Y AUTENTICACIÓN
+// ----------------------------------------------------
+
+model Usuario {
+  id                       Int        @id @default(autoincrement())
+  email                    String     @unique @db.VarChar(120)
+  passwordHash             String     @map("password_hash") @db.VarChar(255)
+  nombreCompleto           String     @map("nombre_completo") @db.VarChar(100)
+  documentoIdentidad       String     @map("documento_identidad") @db.VarChar(20)
+  telefono                 String?    @db.VarChar(20)
+  rol                      RolUsuario @default(ESTUDIANTE)
+  activo                   Boolean    @default(true)
+  inhabilitadoParaReservar Boolean    @default(false) @map("inhabilitado_para_reservar")
+  motivoInhabilitacion     String?    @map("motivo_inhabilitacion") @db.VarChar(255)
+  refreshTokenHash         String?    @map("refresh_token_hash") @db.VarChar(255)
+  creadoEn                 DateTime   @default(now()) @map("creado_en")
+  actualizadoEn            DateTime   @updatedAt @map("actualizado_en")
+
+  reservasSolicitadas    Reserva[]                @relation("SolicitanteReservas")
+  aprobacionesRealizadas Aprobacion[]             @relation("AprobadorReservas")
+  verificaciones         VerificacionInventario[] @relation("VerificadorInventario")
+  auditorias             Auditoria[]
+
+  @@index([email, rol, activo])
+  @@map("usuarios")
+}
+
+// ----------------------------------------------------
+// RESERVAS, APROBACIONES Y VERIFICACIONES
+// ----------------------------------------------------
+
+model Reserva {
+  id                         Int           @id @default(autoincrement())
+  espacioId                  Int           @map("espacio_id")
+  usuarioId                  Int           @map("usuario_id")
+  fechaInicio                DateTime      @map("fecha_inicio")
+  fechaFin                   DateTime      @map("fecha_fin")
+  motivo                     String        @db.VarChar(300)
+  cantidadAsistentesEstimada Int?          @map("cantidad_asistentes_estimada")
+  estado                     EstadoReserva @default(PENDIENTE)
+  creadoEn                   DateTime      @default(now()) @map("creado_en")
+  actualizadoEn              DateTime      @updatedAt @map("actualizado_en")
+
+  espacio        Espacio                  @relation(fields: [espacioId], references: [id], onDelete: Restrict)
+  usuario        Usuario                  @relation("SolicitanteReservas", fields: [usuarioId], references: [id], onDelete: Restrict)
+  aprobaciones   Aprobacion[]
+  verificaciones VerificacionInventario[]
+
+  // Índice compuesto crítico para el motor anti-solapamiento y bloqueos serializables
+  @@index([espacioId, estado, fechaInicio, fechaFin])
+  @@index([usuarioId, estado])
+  @@map("reservas")
+}
+
+model Aprobacion {
+  id            Int              @id @default(autoincrement())
+  reservaId     Int              @map("reserva_id")
+  aprobadorId   Int              @map("aprobador_id")
+  estado        EstadoAprobacion
+  observaciones String?          @db.VarChar(300)
+  fechaAccion   DateTime         @default(now()) @map("fecha_accion")
+
+  reserva   Reserva @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  aprobador Usuario @relation("AprobadorReservas", fields: [aprobadorId], references: [id], onDelete: Restrict)
+
+  @@index([reservaId, aprobadorId])
+  @@map("aprobaciones")
+}
+
+model VerificacionInventario {
+  id                   Int                       @id @default(autoincrement())
+  reservaId            Int                       @map("reserva_id")
+  usuarioVerificadorId Int                       @map("usuario_verificador_id")
+  tipo                 TipoVerificacion
+  estadoGeneral        EstadoGeneralVerificacion @default(CONFORME) @map("estado_general")
+  observaciones        String?                   @db.Text
+  fechaHora            DateTime                  @default(now()) @map("fecha_hora")
+
+  reserva     Reserva               @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  verificador Usuario               @relation("VerificadorInventario", fields: [usuarioVerificadorId], references: [id], onDelete: Restrict)
+  detalles    DetalleVerificacion[]
+
+  @@index([reservaId, tipo])
+  @@map("verificaciones_inventario")
+}
+
+model DetalleVerificacion {
+  id                 Int                    @id @default(autoincrement())
+  verificacionId     Int                    @map("verificacion_id")
+  itemInventarioId   Int                    @map("item_inventario_id")
+  estadoItem         EstadoItemVerificacion @map("estado_item")
+  cantidadEncontrada Int                    @map("cantidad_encontrada")
+  observacionNovedad String?                @map("observacion_novedad") @db.VarChar(300)
+
+  verificacion   VerificacionInventario @relation(fields: [verificacionId], references: [id], onDelete: Cascade)
+  itemInventario ItemInventario         @relation(fields: [itemInventarioId], references: [id], onDelete: Restrict)
+
+  @@index([verificacionId, itemInventarioId])
+  @@map("detalles_verificacion")
+}
+
+model Auditoria {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int?     @map("usuario_id")
+  accion    String   @db.VarChar(100) // "CREACION_RESERVA", "CHECK_IN_NOVEDAD", "APROBACION"
+  entidad   String   @db.VarChar(50) // "Reserva", "ItemInventario"
+  entidadId Int      @map("entidad_id")
+  detalles  Json?
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  creadoEn  DateTime @default(now()) @map("creado_en")
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([entidad, entidadId])
+  @@index([creadoEn])
+  @@map("auditorias")
+}

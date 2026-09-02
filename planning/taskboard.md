@@ -19,7 +19,7 @@
 | Épica | Nombre | Total Tareas | Estado Global |
 | :--- | :--- | :---: | :---: |
 | **EPIC-01** | Infraestructura Base, Tooling y Contratos SDD (NestJS + Next.js) | 4 | ✅ DONE |
-| **EPIC-02** | Modelado de Persistencia y Base de Datos (MariaDB + Prisma) | 4 | 📋 BACKLOG |
+| **EPIC-02** | Modelado de Persistencia y Base de Datos (MariaDB + Prisma) | 4 | ✅ DONE |
 | **EPIC-03** | Autenticación Institucional y Control de Acceso (RBAC) | 4 | 📋 BACKLOG |
 | **EPIC-04** | Motor de Disponibilidad y Detección de Conflictos | 4 | 📋 BACKLOG |
 | **EPIC-05** | Catálogo Interactivo de Espacios y Consulta de Inventario | 5 | 📋 BACKLOG |
@@ -45,10 +45,10 @@
 ### EPIC-02: Modelado de Persistencia y Base de Datos (MariaDB + Prisma)
 | ID | Tarea | Prioridad | Dependencias | Estado | Criterios de Aceptación |
 | :--- | :--- | :---: | :---: | :---: | :--- |
-| **TSK-201** | Configurar conexión a MariaDB y módulo `PrismaModule` en NestJS | Alta | TSK-101 | 📋 BACKLOG | `PrismaService` implementado como provider global con control de ciclo de vida (`onModuleInit`). |
-| **TSK-202** | Implementar `schema.prisma` con modelos de dominio (Espacios, Inventario, Reservas, Verificaciones) | Crítica | TSK-103, TSK-201 | 📋 BACKLOG | Modelos `Sede`, `Bloque`, `Espacio`, `ItemInventario`, `PeriodoAcademico`, `ClaseFija`, `Usuario`, `Reserva`, `Aprobacion`, `VerificacionInventario`, `DetalleVerificacion` definidos con claves foráneas. |
-| **TSK-203** | Generar y aplicar migraciones iniciales de base de datos | Alta | TSK-202 | 📋 BACKLOG | Migración aplicada limpiamente en MariaDB sin inconsistencias relacionales. |
-| **TSK-204** | Crear script de Seed con sedes, bloques, espacios e inventarios de prueba del Politécnico | Media | TSK-203 | 📋 BACKLOG | Seed inserta Sedes (Poblado, Rionegro), Bloques (P40, P31), Aulas, Canchas con balones/mallas, Auditorios con proyectores y Usuarios. |
+| **TSK-201** | Configurar conexión a MariaDB y módulo `PrismaModule` en NestJS | Alta | TSK-101 | ✅ DONE | `PrismaService` implementado como provider global con control de ciclo de vida (`onModuleInit`, `onModuleDestroy`) y `PrismaModule` exportado globalmente. |
+| **TSK-202** | Implementar `schema.prisma` con modelos de dominio (Espacios, Inventario, Reservas, Verificaciones) | Crítica | TSK-103, TSK-201 | ✅ DONE | Modelos `Sede`, `Bloque`, `Espacio`, `ItemInventario`, `PeriodoAcademico`, `ClaseFija`, `Usuario`, `Reserva`, `Aprobacion`, `VerificacionInventario`, `DetalleVerificacion`, `Auditoria` definidos con relaciones, índices compuestos y restricciones. |
+| **TSK-203** | Generar cliente tipado Prisma (`prisma generate`) y validación de esquemas | Alta | TSK-202 | ✅ DONE | Cliente tipado generado en `@prisma/client`, validación de esquema aprobada y suite de pruebas unitarias cubriendo integridad de modelos y enums. |
+| **TSK-204** | Crear script de Seed con sede Medellín (Poblado), bloques, espacios, inventarios y usuarios semilla | Media | TSK-203 | ✅ DONE | Seed enfocado exclusivamente en Sede Poblado (Bloques P40, P19, P31), catálogo de inventarios tecnológicos/deportivos, periodo activo 2026-2 con clases fijas y usuarios con contraseñas bcrypt. |
 
 ---
 

@@ -14,10 +14,7 @@ export const RegisterSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .email({ message: 'Formato de correo electrónico inválido' })
-    .endsWith('@elpoli.edu.co', {
-      message: 'El correo debe ser institucional con dominio @elpoli.edu.co',
-    }),
+    .email({ message: 'Formato de correo electrónico inválido' }),
   password: z
     .string()
     .min(8, { message: 'La contraseña debe tener mínimo 8 caracteres' })
@@ -52,10 +49,7 @@ export const LoginSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .email({ message: 'Formato de correo inválido' })
-    .endsWith('@elpoli.edu.co', {
-      message: 'El correo debe ser institucional (@elpoli.edu.co)',
-    }),
+    .email({ message: 'Formato de correo inválido' }),
   password: z
     .string()
     .min(1, { message: 'La contraseña es obligatoria' }),

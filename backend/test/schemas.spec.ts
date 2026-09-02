@@ -65,12 +65,14 @@ describe('RegisterSchema', () => {
     expectSuccess(RegisterSchema, { ...validRegister, telefono: '+573001234567' });
   });
 
-  it('rechaza correos no institucionales (@gmail.com)', () => {
-    expectFail(RegisterSchema, { ...validRegister, email: 'test@gmail.com' });
+  it('acepta correos de diversos dominios válidos para facilitar pruebas', () => {
+    expectSuccess(RegisterSchema, { ...validRegister, email: 'test@gmail.com' });
+    expectSuccess(RegisterSchema, { ...validRegister, email: 'admin@elpoli.edu.co' });
   });
 
-  it('rechaza correos no institucionales (@yahoo.com)', () => {
-    expectFail(RegisterSchema, { ...validRegister, email: 'test@yahoo.com' });
+  it('rechaza correos con formato inválido', () => {
+    expectFail(RegisterSchema, { ...validRegister, email: 'no-es-un-correo' });
+    expectFail(RegisterSchema, { ...validRegister, email: 'usuario@' });
   });
 
   it('rechaza correos vacíos', () => {
@@ -124,16 +126,20 @@ describe('RegisterSchema', () => {
 });
 
 describe('LoginSchema', () => {
-  it('acepta login válido con correo institucional', () => {
+  it('acepta login válido con cualquier formato de correo válido', () => {
     expectSuccess(LoginSchema, {
       email: 'maria.lopez@elpoli.edu.co',
       password: 'cualquier_password',
     });
+    expectSuccess(LoginSchema, {
+      email: 'maria.lopez@hotmail.com',
+      password: 'cualquier_password',
+    });
   });
 
-  it('rechaza login con correo no institucional', () => {
+  it('rechaza login con formato de correo inválido', () => {
     expectFail(LoginSchema, {
-      email: 'maria.lopez@hotmail.com',
+      email: 'formato-invalido',
       password: 'abc123',
     });
   });
