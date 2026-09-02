@@ -122,5 +122,125 @@ describe('ReservasService', () => {
       expect(result.estado).toBe('APROBADA');
       expect(disponibilidadService.validarDisponibilidadTx).toHaveBeenCalled();
     });
+
+    it('debe rechazar una reserva PENDIENTE sin validar disponibilidad', async () => {
+      prisma.reserva.findUnique.mockResolvedValue({
+        id: 100,
+        estado: 'PENDIENTE',
+        espacioId: 1,
+      });
+      prisma.aprobacion.create.mockResolvedValue({ id: 1 });
+      prisma.reserva.update.mockResolvedValue({
+        id: 100,
+        estado: 'RECHAZADA',
+      });
+
+      const result = await service.cambiarEstado(
+        100,
+        { estado: 'RECHAZADA', observaciones: 'Espacio requerido para evento institucional' },
+        5,
+      );
+      expect(result.estado).toBe('RECHAZADA');
+      expect(disponibilidadService.validarDisponibilidadTx).not.toHaveBeenCalled();
+    });
+
+    it('debe lanzar ConflictException si ocurre un error de concurrencia P2034', async () => {
+      prisma.$transaction.mockRejectedValue({ code: 'P2034' });
+
+      await expect(
+        service.cambiarEstado(100, { estado: 'APROBADA' }, 5),
+      ).rejects.toThrow('Conflicto de concurrencia');
+    });
+  });
+
+  describe('cancelar', () => {
+    it('debe permitir cancelar la reserva al usuario propietario', async () => {
+      prisma.reserva.findUnique.mockResolvedValue({
+        id: 100,
+        usuarioId: 1,
+        estado: 'PENDIENTE',
+      });
+      prisma.reserva.update.mockResolvedValue({
+        id: 100,
+        estado: 'CANCELADA',
+      });
+
+      const result = await service.cancelar(100, 1, 'ESTUDIANTE');
+      expect(result.estado).toBe('CANCELADA');
+    });
+
+    it('debe permitir a un SUPERADMIN cancelar la reserva de cualquier usuario', async () => {
+      prisma.reserva.findUnique.mockResolvedValue({
+        id: 100,
+        usuarioId: 99,
+        estado: 'APROBADA',
+      });
+      prisma.reserva.update.mockResolvedValue({
+        id: 100,
+        estado: 'CANCELADA',
+      });
+
+      const result = await service.cancelar(100, 1, 'SUPERADMIN');
+      expect(result.estado).toBe('CANCELADA');
+    });
+
+    it('debe lanzar ForbiddenException si otro usuario no admin intenta cancelar', async () => {
+      prisma.reserva.findUnique.mockResolvedValue({
+        id: 100,
+        usuarioId: 99,
+        estado: 'PENDIENTE',
+      });
+
+      await expect(service.cancelar(100, 1, 'DOCENTE')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('debe lanzar BadRequestException si la reserva ya está CANCELADA o FINALIZADA', async () => {
+      prisma.reserva.findUnique.mockResolvedValue({
+        id: 100,
+        usuarioId: 1,
+        estado: 'FINALIZADA',
+      });
+
+      await expect(service.cancelar(100, 1, 'ESTUDIANTE')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('findById & queries', () => {
+    it('debe lanzar NotFoundException si la reserva no existe', async () => {
+      prisma.reserva.findUnique.mockResolvedValue(null);
+
+      await expect(service.findById(999)).rejects.toThrow(NotFoundException);
+    });
+
+    it('debe retornar la reserva con sus relaciones si existe', async () => {
+      const mockReserva = {
+        id: 100,
+        espacioId: 1,
+        usuarioId: 1,
+        estado: 'APROBADA',
+      };
+      prisma.reserva.findUnique.mockResolvedValue(mockReserva);
+
+      const result = await service.findById(100);
+      expect(result.id).toBe(100);
+    });
+
+    it('debe paginar y retornar reservas en findMisReservas', async () => {
+      prisma.reserva.count.mockResolvedValue(1);
+      prisma.reserva.findMany.mockResolvedValue([{ id: 100 }]);
+
+      const result = await service.findMisReservas(1, { page: 1, limit: 10 });
+      expect(result.meta.total).toBe(1);
+      expect(result.data).toHaveLength(1);
+    });
+
+    it('debe paginar y filtrar reservas en findGestion', async () => {
+      prisma.reserva.count.mockResolvedValue(2);
+      prisma.reserva.findMany.mockResolvedValue([{ id: 100 }, { id: 101 }]);
+
+      const result = await service.findGestion({ sedeId: 1, page: 1, limit: 10 });
+      expect(result.meta.total).toBe(2);
+      expect(result.data).toHaveLength(2);
+    });
   });
 });

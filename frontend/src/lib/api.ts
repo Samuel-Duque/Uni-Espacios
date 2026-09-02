@@ -227,3 +227,111 @@ export const authApi = {
     return api.get<UsuarioResponse>('/auth/me');
   },
 };
+
+export const verificacionesApi = {
+  getInventarioByEspacio: async (espacioId: number) => {
+    return api.get<any[]>(`/espacios/${espacioId}/inventario`);
+  },
+
+  getVerificacionesByReserva: async (reservaId: number) => {
+    return api.get<any[]>(`/reservas/${reservaId}/verificaciones`);
+  },
+
+  checkIn: async (reservaId: number, dto: { observacionesGenerales?: string; items: any[] }) => {
+    return api.post<any>(`/reservas/${reservaId}/check-in`, dto);
+  },
+
+  checkOut: async (reservaId: number, dto: { observacionesGenerales?: string; items: any[] }) => {
+    return api.post<any>(`/reservas/${reservaId}/check-out`, dto);
+  },
+
+  getNovedades: async (page = 1, limit = 10) => {
+    return api.get<{ data: any[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+      `/verificaciones/novedades?page=${page}&limit=${limit}`,
+    );
+  },
+};
+
+export const inventarioApi = {
+  getByEspacio: async (espacioId: number) => {
+    return api.get<any[]>(`/espacios/${espacioId}/inventario`);
+  },
+
+  getById: async (id: number) => {
+    return api.get<any>(`/inventario/${id}`);
+  },
+
+  create: async (dto: any) => {
+    return api.post<any>('/inventario', dto);
+  },
+
+  update: async (id: number, dto: any) => {
+    return api.patch<any>(`/inventario/${id}`, dto);
+  },
+
+  remove: async (id: number) => {
+    return api.delete<any>(`/inventario/${id}`);
+  },
+};
+
+export const reservasApi = {
+  getMisReservas: async (query?: { estado?: string; page?: number; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (query?.estado) params.append('estado', query.estado);
+    if (query?.page) params.append('page', query.page.toString());
+    if (query?.limit) params.append('limit', query.limit.toString());
+    const qs = params.toString();
+    return api.get<{ data: any[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+      `/reservas/mis-reservas${qs ? `?${qs}` : ''}`,
+    );
+  },
+
+  getById: async (id: number) => {
+    return api.get<any>(`/reservas/${id}`);
+  },
+
+  crear: async (dto: any) => {
+    return api.post<any>('/reservas', dto);
+  },
+
+  cancelar: async (id: number) => {
+    return api.patch<any>(`/reservas/${id}/cancelar`);
+  },
+
+  getGestion: async (query?: { estado?: string; page?: number; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (query?.estado) params.append('estado', query.estado);
+    if (query?.page) params.append('page', query.page.toString());
+    if (query?.limit) params.append('limit', query.limit.toString());
+    const qs = params.toString();
+    return api.get<{ data: any[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+      `/reservas/gestion${qs ? `?${qs}` : ''}`,
+    );
+  },
+
+  cambiarEstado: async (id: number, dto: { estado: string; observaciones?: string }) => {
+    return api.patch<any>(`/reservas/${id}/estado`, dto);
+  },
+};
+
+export const usuariosApi = {
+  inhabilitar: async (id: number, motivo: string) => {
+    return api.patch<any>(`/usuarios/${id}/inhabilitar`, { motivo });
+  },
+
+  rehabilitar: async (id: number) => {
+    return api.patch<any>(`/usuarios/${id}/rehabilitar`);
+  },
+};
+
+export const espaciosApi = {
+  getAll: async (query?: any) => {
+    const params = new URLSearchParams(query || {});
+    const qs = params.toString();
+    return api.get<{ data: any[]; meta: any }>(`/espacios${qs ? `?${qs}` : ''}`);
+  },
+
+  getById: async (id: number) => {
+    return api.get<any>(`/espacios/${id}`);
+  },
+};

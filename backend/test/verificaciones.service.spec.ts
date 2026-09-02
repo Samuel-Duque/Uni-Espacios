@@ -157,4 +157,46 @@ describe('VerificacionesService', () => {
       });
     });
   });
+
+  describe('findVerificacionesByReserva', () => {
+    it('debe arrojar NotFoundException si la reserva no existe', async () => {
+      prisma.reserva.findUnique.mockResolvedValue(null);
+      await expect(
+        service.findVerificacionesByReserva(999, 1, 'ESTUDIANTE'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('debe arrojar ForbiddenException si el usuario no es el solicitante ni gestor/admin', async () => {
+      prisma.reserva.findUnique.mockResolvedValue({ id: 1, usuarioId: 10 });
+      await expect(
+        service.findVerificacionesByReserva(1, 999, 'ESTUDIANTE'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('debe retornar la lista de actas asociadas a la reserva', async () => {
+      prisma.reserva.findUnique.mockResolvedValue({ id: 1, usuarioId: 10 });
+      const mockActas = [{ id: 1, tipo: 'CHECK_IN' }, { id: 2, tipo: 'CHECK_OUT' }];
+      prisma.verificacionInventario.findMany.mockResolvedValue(mockActas);
+
+      const result = await service.findVerificacionesByReserva(1, 10, 'ESTUDIANTE');
+      expect(result).toEqual(mockActas);
+    });
+  });
+
+  describe('findNovedades', () => {
+    it('debe retornar reporte paginado de novedades', async () => {
+      prisma.verificacionInventario.count.mockResolvedValue(1);
+      prisma.verificacionInventario.findMany.mockResolvedValue([
+        {
+          id: 1,
+          tipo: 'CHECK_OUT',
+          estadoGeneral: 'CON_NOVEDADES',
+        },
+      ]);
+
+      const result = await service.findNovedades({ page: 1, limit: 10 });
+      expect(result.meta.total).toBe(1);
+      expect(result.data.length).toBe(1);
+    });
+  });
 });

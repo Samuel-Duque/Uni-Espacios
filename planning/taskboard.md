@@ -24,7 +24,7 @@
 | **EPIC-04** | Motor de Disponibilidad y Detección de Conflictos | 4 | ✅ DONE |
 | **EPIC-05** | Catálogo Interactivo de Espacios y Consulta de Inventario | 5 | ⏳ IN_PROGRESS |
 | **EPIC-06** | Ciclo de Vida de Reservas y Bandeja de Aprobaciones | 5 | ⏳ IN_PROGRESS |
-| **EPIC-07** | Control de Inventario y Verificaciones (Check-In / Check-Out) | 5 | ⏳ IN_PROGRESS |
+| **EPIC-07** | Control de Inventario y Verificaciones (Check-In / Check-Out) | 5 | ✅ DONE |
 | **EPIC-08** | Gestión de Calendario Académico y Clases Fijas | 4 | ⏳ IN_PROGRESS |
 | **EPIC-09** | Pruebas de Carga, Concurrencia y Despliegue | 4 | ⏳ IN_PROGRESS |
 
@@ -100,8 +100,8 @@
 | **TSK-701** | CRUD de Inventario de Implementos por Espacio en NestJS | Alta | TSK-202, TSK-303 | ✅ DONE | Endpoints `GET /api/espacios/:id/inventario`, `POST /api/inventario`, `PATCH /api/inventario/:id` y `DELETE` protegidos por rol. |
 | **TSK-702** | Endpoint para registrar Verificación de Check-In | Crítica | TSK-701, TSK-601 | ✅ DONE | `POST /api/reservas/:id/check-in` valida ventana horaria (T-15m a T+20m), registra estado de cada implemento y cambia reserva a `EN_USO`. |
 | **TSK-703** | Endpoint para registrar Verificación de Check-Out y Novedades | Crítica | TSK-702 | ✅ DONE | `POST /api/reservas/:id/check-out` evalúa faltantes/daños, cambia reserva a `FINALIZADA` e inhabilita preventivamente al usuario infractor. |
-| **TSK-704** | Componente frontend de Lista de Chequeo de Implementos | Alta | TSK-702, TSK-502 | 📋 BACKLOG | Interfaz visual interactiva para marcar ítem por ítem el estado de los recursos pedagógicos/deportivos. |
-| **TSK-705** | Panel de Reporte y Auditoría de Novedades de Inventario | Media | TSK-703, TSK-502 | 📋 BACKLOG | Vista para gestores con historial de implementos dañados/faltantes y responsable asociado. |
+| **TSK-704** | Componente frontend de Lista de Chequeo de Implementos | Alta | TSK-702, TSK-502 | ✅ DONE | Componente `InventoryChecklist` interactivo con botones radiales (`Óptimo`, `Dañado`, `Faltante`), iconos por categoría, campo condicional de novedad, resumen dinámico y modal de confirmación. `VerificacionModal` integrado con TanStack Query mutations e invalidación de caché. |
+| **TSK-705** | Panel de Reporte y Auditoría de Novedades de Inventario | Media | TSK-703, TSK-502 | ✅ DONE | Vista `/gestion` con dos pestañas: (1) Panel de Novedades con listado de actas `CON_NOVEDADES`, datos del responsable, implementos afectados y botón de rehabilitación de usuario; (2) Bandeja de Aprobaciones con dictamen Aprobar/Rechazar. |
 
 ---
 
