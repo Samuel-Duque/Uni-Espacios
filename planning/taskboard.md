@@ -20,12 +20,12 @@
 | :--- | :--- | :---: | :---: |
 | **EPIC-01** | Infraestructura Base, Tooling y Contratos SDD (NestJS + Next.js) | 4 | ✅ DONE |
 | **EPIC-02** | Modelado de Persistencia y Base de Datos (MariaDB + Prisma) | 4 | ✅ DONE |
-| **EPIC-03** | Autenticación Institucional y Control de Acceso (RBAC) | 4 | ⏳ IN_PROGRESS |
+| **EPIC-03** | Autenticación Institucional y Control de Acceso (RBAC) | 4 | ✅ DONE |
 | **EPIC-04** | Motor de Disponibilidad y Detección de Conflictos | 4 | ✅ DONE |
-| **EPIC-05** | Catálogo Interactivo de Espacios y Consulta de Inventario | 5 | ⏳ IN_PROGRESS |
-| **EPIC-06** | Ciclo de Vida de Reservas y Bandeja de Aprobaciones | 5 | ⏳ IN_PROGRESS |
+| **EPIC-05** | Catálogo Interactivo de Espacios y Consulta de Inventario | 5 | ✅ DONE |
+| **EPIC-06** | Ciclo de Vida de Reservas y Bandeja de Aprobaciones | 5 | ✅ DONE |
 | **EPIC-07** | Control de Inventario y Verificaciones (Check-In / Check-Out) | 5 | ✅ DONE |
-| **EPIC-08** | Gestión de Calendario Académico y Clases Fijas | 4 | ⏳ IN_PROGRESS |
+| **EPIC-08** | Gestión de Calendario Académico y Clases Fijas | 4 | ✅ DONE |
 | **EPIC-09** | Pruebas de Carga, Concurrencia y Despliegue | 4 | ⏳ IN_PROGRESS |
 
 ---
@@ -76,10 +76,10 @@
 | ID | Tarea | Prioridad | Dependencias | Estado | Criterios de Aceptación |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | **TSK-501** | Endpoints de consulta de Sedes, Bloques y Espacios con filtros | Alta | TSK-202 | ✅ DONE | `GET /api/espacios` permite filtrar por `sedeId`, `bloqueId`, `tipo`, `capacidadMin`, estado y categoría de implementos con paginación. |
-| **TSK-502** | Configurar `QueryClientProvider` de TanStack Query v5 en Next.js | Alta | TSK-102 | 📋 BACKLOG | Provider configurado con soporte de hidratación y manejo de reintentos optimizado. |
-| **TSK-503** | Construir componente de Catálogo y Tarjetas de Espacio | Alta | TSK-501, TSK-502 | 📋 BACKLOG | Renderizado de espacios con badges de aforo, implementos destacados y estado en Tailwind CSS. |
-| **TSK-504** | Implementar barra de filtros dinámicos (Sede, Bloque, Tipo, Implementos) | Media | TSK-503 | 📋 BACKLOG | Filtros sincronizados con la URL y actualizados reactivamente con TanStack Query. |
-| **TSK-505** | Modal / Vista de Ficha Detallada de Espacio con Ficha de Inventario | Media | TSK-503 | 📋 BACKLOG | Muestra especificaciones, lista de implementos incluidos (TV, marcadores, balones) y botón directo a reservar. |
+| **TSK-502** | Configurar `QueryClientProvider` de TanStack Query v5 en Next.js | Alta | TSK-102 | ✅ DONE | Provider configurado con `QueryProvider` y factory centralizado `queryKeys.ts` con opciones de frescura y caché optimizadas. |
+| **TSK-503** | Construir componente de Catálogo y Tarjetas de Espacio | Alta | TSK-501, TSK-502 | ✅ DONE | Renderizado de espacios mediante `EspacioCard` con badges de aforo, implementos destacados, estados y branding institucional Politécnico JIC. |
+| **TSK-504** | Implementar barra de filtros dinámicos (Sede, Bloque, Tipo, Implementos) | Media | TSK-503 | ✅ DONE | Componente `FacetedFilters` con sincronización bidireccional de parámetros en URL (`useSearchParams`) y reactividad TanStack Query. |
+| **TSK-505** | Modal / Vista de Ficha Detallada de Espacio con Ficha de Inventario | Media | TSK-503 | ✅ DONE | Vista `/espacios/[id]` con especificaciones, Rejilla interactiva de Disponibilidad Horaria (`AvailabilityGrid`), pestaña de inventario y clases fijas. |
 
 ---
 
@@ -87,10 +87,10 @@
 | ID | Tarea | Prioridad | Dependencias | Estado | Criterios de Aceptación |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | **TSK-601** | Endpoint para creación de solicitud de reserva | Crítica | TSK-403, TSK-302 | ✅ DONE | `POST /api/reservas` valida disponibilidad en transacción serializable, crea reserva en `PENDIENTE` y registra auditoría. |
-| **TSK-602** | Formulario frontend de solicitud con selector de fecha/hora | Alta | TSK-601, TSK-502 | 📋 BACKLOG | React Hook Form + Zod valida horario en cliente y envía mutación a TanStack Query. |
-| **TSK-603** | Vista de "Mis Reservas" para el solicitante | Alta | TSK-601 | 📋 BACKLOG | Lista de reservas con estados (`PENDIENTE`, `APROBADA`, `EN_USO`, `FINALIZADA`) y opción de cancelación. |
+| **TSK-602** | Formulario frontend de solicitud con selector de fecha/hora | Alta | TSK-601, TSK-502 | ✅ DONE | Formulario `ReservationForm` en `/reservas/nueva` con React Hook Form + Zod, validación de franjas temporales (máx 6h) y mutaciones TanStack Query. |
+| **TSK-603** | Vista de "Mis Reservas" para el solicitante | Alta | TSK-601 | ✅ DONE | Vista `/reservas` con filtrado por estado, cancelación, consulta de actas y enlaces a páginas dedicadas de Check-In y Check-Out. |
 | **TSK-604** | Endpoints de aprobación/rechazo para `GESTOR_ESPACIO` | Crítica | TSK-403, TSK-303 | ✅ DONE | `PATCH /api/reservas/:id/estado` exige motivo en rechazos, revalida disponibilidad atómica en aprobaciones y genera auditoría. |
-| **TSK-605** | Bandeja de entrada y panel de decisión del Gestor de Espacios | Alta | TSK-604, TSK-502 | 📋 BACKLOG | Tabla interactiva con botones Aprobar / Rechazar (con modal de observaciones) e invalidación de caché reactiva. |
+| **TSK-605** | Bandeja de entrada y panel de decisión del Gestor de Espacios | Alta | TSK-604, TSK-502 | ✅ DONE | Bandeja en `/gestion/solicitudes` y `/gestion/novedades` con dictamen Aprobar / Rechazar (justificación obligatoria) y rehabilitación de usuarios. |
 
 ---
 
@@ -100,8 +100,8 @@
 | **TSK-701** | CRUD de Inventario de Implementos por Espacio en NestJS | Alta | TSK-202, TSK-303 | ✅ DONE | Endpoints `GET /api/espacios/:id/inventario`, `POST /api/inventario`, `PATCH /api/inventario/:id` y `DELETE` protegidos por rol. |
 | **TSK-702** | Endpoint para registrar Verificación de Check-In | Crítica | TSK-701, TSK-601 | ✅ DONE | `POST /api/reservas/:id/check-in` valida ventana horaria (T-15m a T+20m), registra estado de cada implemento y cambia reserva a `EN_USO`. |
 | **TSK-703** | Endpoint para registrar Verificación de Check-Out y Novedades | Crítica | TSK-702 | ✅ DONE | `POST /api/reservas/:id/check-out` evalúa faltantes/daños, cambia reserva a `FINALIZADA` e inhabilita preventivamente al usuario infractor. |
-| **TSK-704** | Componente frontend de Lista de Chequeo de Implementos | Alta | TSK-702, TSK-502 | ✅ DONE | Componente `InventoryChecklist` interactivo con botones radiales (`Óptimo`, `Dañado`, `Faltante`), iconos por categoría, campo condicional de novedad, resumen dinámico y modal de confirmación. `VerificacionModal` integrado con TanStack Query mutations e invalidación de caché. |
-| **TSK-705** | Panel de Reporte y Auditoría de Novedades de Inventario | Media | TSK-703, TSK-502 | ✅ DONE | Vista `/gestion` con dos pestañas: (1) Panel de Novedades con listado de actas `CON_NOVEDADES`, datos del responsable, implementos afectados y botón de rehabilitación de usuario; (2) Bandeja de Aprobaciones con dictamen Aprobar/Rechazar. |
+| **TSK-704** | Componente frontend de Lista de Chequeo de Implementos | Alta | TSK-702, TSK-502 | ✅ DONE | Componente `InventoryChecklist` interactivo con botones radiales (`Óptimo`, `Dañado`, `Faltante`), páginas dedicadas `/reservas/[id]/check-in` y `/reservas/[id]/check-out`. |
+| **TSK-705** | Panel de Reporte y Auditoría de Novedades de Inventario | Media | TSK-703, TSK-502 | ✅ DONE | Vista `/gestion/novedades` y `/gestion` con listado de actas `CON_NOVEDADES`, datos del responsable, implementos afectados y rehabilitación de usuario. |
 
 ---
 
@@ -110,7 +110,7 @@
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | **TSK-801** | CRUD de Periodos Académicos (`SUPERADMIN`) | Media | TSK-202, TSK-303 | ✅ DONE | Endpoints para crear, activar (transacción exclusiva) y listar semestres académicos con validación de fechas. |
 | **TSK-802** | CRUD y carga masiva de Clases Fijas por Espacio | Alta | TSK-801 | ✅ DONE | Registro de horarios semanales recurrentes asignados a un periodo académico específico y carga masiva atómica. |
-| **TSK-803** | Vista de administración de Periodos y Horarios Académicos en Next.js | Media | TSK-801, TSK-802 | 📋 BACKLOG | Interfaz para que administradores gestionen el calendario y visualicen la carga fija semanal. |
+| **TSK-803** | Vista de administración de Periodos y Horarios Académicos en Next.js | Media | TSK-801, TSK-802 | ✅ DONE | Vistas `/admin/sedes`, `/admin/periodos` y `/admin/clases-fijas` para gestión de infraestructura, calendario y carga académica fija. |
 | **TSK-804** | Validaciones cruzadas de integridad temporal en clases fijas | Media | TSK-802 | ✅ DONE | Impide registrar clases con horas invertidas, traslapes de horario en el mismo día/espacio o fuera de límites. |
 
 ---
@@ -118,7 +118,7 @@
 ### EPIC-09: Pruebas de Carga, Concurrencia y Despliegue
 | ID | Tarea | Prioridad | Dependencias | Estado | Criterios de Aceptación |
 | :--- | :--- | :---: | :---: | :---: | :--- |
-| **TSK-901** | Pruebas unitarias y de integración del motor de solapamientos e inventario | Crítica | TSK-403, TSK-703 | ✅ DONE | Suite de pruebas en NestJS con Jest (123 tests aprobados) cubriendo auth, guards, filtros, disponibilidad, reservas e inventario. |
+| **TSK-901** | Pruebas unitarias y de integración del motor de solapamientos e inventario | Crítica | TSK-403, TSK-703 | ✅ DONE | Suite de pruebas en NestJS con Jest (151 tests aprobados) cubriendo auth, guards, filtros, disponibilidad, reservas e inventario. |
 | **TSK-902** | Pruebas de estrés y concurrencia (Prevención de Double-Booking) | Crítica | TSK-901 | 📋 BACKLOG | 50 solicitudes concurrentes para el mismo espacio/hora solo permiten 1 reserva exitosa. |
-| **TSK-903** | Optimización de build y Server Components en Next.js | Media | TSK-503, TSK-704 | 📋 BACKLOG | Build de producción optimizado (`next build`), SSR fluido y bundle JS reducido. |
+| **TSK-903** | Optimización de build y Server Components en Next.js | Media | TSK-503, TSK-704 | ✅ DONE | Build de producción optimizado (`next build`) con 16 rutas estáticas y dinámicas compiladas limpiamente en Turbopack. |
 | **TSK-904** | Configuración de variables de entorno de producción y scripts de despliegue | Alta | Todas | 📋 BACKLOG | Dockerfile multi-stage para NestJS y Next.js, scripts de migración y documentación de despliegue. |

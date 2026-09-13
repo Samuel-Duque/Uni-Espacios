@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays,
@@ -152,22 +153,32 @@ export default function ReservasPage() {
           </p>
         </div>
 
-        {/* Filtro por Estado */}
-        <div className="flex items-center space-x-2">
-          <Filter className="h-4 w-4 text-slate-400" />
-          <select
-            value={estadoFilter}
-            onChange={(e) => setEstadoFilter(e.target.value)}
-            className="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 shadow-xs outline-none focus:ring-2 focus:ring-emerald-600"
+        {/* Acciones y Filtro por Estado */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <Link
+            href="/reservas/nueva"
+            className="inline-flex items-center justify-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 shadow-xs transition-colors"
           >
-            <option value="">Todos los estados</option>
-            <option value="APROBADA">Aprobadas</option>
-            <option value="EN_USO">En Uso (Activas)</option>
-            <option value="FINALIZADA">Finalizadas</option>
-            <option value="PENDIENTE">Pendientes de Dictamen</option>
-            <option value="RECHAZADA">Rechazadas</option>
-            <option value="CANCELADA">Canceladas</option>
-          </select>
+            <CalendarDays className="h-4 w-4" />
+            <span>+ Nueva Reserva</span>
+          </Link>
+
+          <div className="flex items-center space-x-2">
+            <Filter className="h-4 w-4 text-slate-400" />
+            <select
+              value={estadoFilter}
+              onChange={(e) => setEstadoFilter(e.target.value)}
+              className="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 shadow-xs outline-none focus:ring-2 focus:ring-emerald-600"
+            >
+              <option value="">Todos los estados</option>
+              <option value="APROBADA">Aprobadas</option>
+              <option value="EN_USO">En Uso (Activas)</option>
+              <option value="FINALIZADA">Finalizadas</option>
+              <option value="PENDIENTE">Pendientes de Dictamen</option>
+              <option value="RECHAZADA">Rechazadas</option>
+              <option value="CANCELADA">Canceladas</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -276,47 +287,28 @@ export default function ReservasPage() {
                     <div className="flex flex-wrap items-center gap-2 pt-2 lg:pt-0 shrink-0">
                       {/* Botón de Check-In */}
                       {reserva.estado === 'APROBADA' && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setActiveModal({
-                              isOpen: true,
-                              tipo: 'CHECK_IN',
-                              reservaId: reserva.id,
-                              espacioId: reserva.espacioId,
-                              espacioNombre: reserva.espacio?.nombre,
-                            })
-                          }
-                          disabled={!checkInStatus?.habilitado && user?.rol === 'ESTUDIANTE'}
+                        <Link
+                          href={`/reservas/${reserva.id}/check-in`}
                           className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
                             checkInStatus?.habilitado || user?.rol !== 'ESTUDIANTE'
                               ? 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
-                              : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                              : 'bg-slate-100 text-slate-400 pointer-events-none'
                           }`}
                         >
                           <FileCheck className="h-4 w-4" />
                           <span>Realizar Check-In</span>
-                        </button>
+                        </Link>
                       )}
 
                       {/* Botón de Check-Out */}
                       {reserva.estado === 'EN_USO' && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setActiveModal({
-                              isOpen: true,
-                              tipo: 'CHECK_OUT',
-                              reservaId: reserva.id,
-                              espacioId: reserva.espacioId,
-                              espacioNombre: reserva.espacio?.nombre,
-                            })
-                          }
+                        <Link
+                          href={`/reservas/${reserva.id}/check-out`}
                           className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-black text-white transition-all shadow-xs"
                         >
                           <FileCheck className="h-4 w-4" />
                           <span>Realizar Check-Out</span>
-                        </button>
+                        </Link>
                       )}
 
                       {/* Botón para ver actas digitales emitidas */}
