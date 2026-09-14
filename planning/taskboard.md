@@ -118,7 +118,7 @@
 ### EPIC-09: Pruebas de Carga, Concurrencia y Despliegue
 | ID | Tarea | Prioridad | Dependencias | Estado | Criterios de Aceptación |
 | :--- | :--- | :---: | :---: | :---: | :--- |
-| **TSK-901** | Pruebas unitarias y de integración del motor de solapamientos e inventario | Crítica | TSK-403, TSK-703 | ✅ DONE | Suite de pruebas en NestJS con Jest (151 tests aprobados) cubriendo auth, guards, filtros, disponibilidad, reservas e inventario. |
-| **TSK-902** | Pruebas de estrés y concurrencia (Prevención de Double-Booking) | Crítica | TSK-901 | 📋 BACKLOG | 50 solicitudes concurrentes para el mismo espacio/hora solo permiten 1 reserva exitosa. |
+| **TSK-901** | Pruebas unitarias y de integración del motor de solapamientos e inventario | Crítica | TSK-403, TSK-703 | ✅ DONE | Suite de pruebas en NestJS con Jest (157 unitarias + 6 de integración Supertest en 'reservas.e2e-spec.ts') con cobertura >85% en disponibilidad, reservas y verificaciones. |
+| **TSK-902** | Pruebas de estrés y concurrencia (Prevención de Double-Booking) | Crítica | TSK-901 | ✅ DONE | Script de estrés de 50 peticiones concurrentes ('scripts/test-concurrency.ts') y suite Jest ('concurrency.spec.ts') certificando 1 éxito y 49 rechazos (409 Conflict) bajo aislamiento serializable. |
 | **TSK-903** | Optimización de build y Server Components en Next.js | Media | TSK-503, TSK-704 | ✅ DONE | Build de producción optimizado (`next build`) con 16 rutas estáticas y dinámicas compiladas limpiamente en Turbopack. |
 | **TSK-904** | Configuración de variables de entorno de producción y scripts de despliegue | Alta | Todas | 📋 BACKLOG | Dockerfile multi-stage para NestJS y Next.js, scripts de migración y documentación de despliegue. |
