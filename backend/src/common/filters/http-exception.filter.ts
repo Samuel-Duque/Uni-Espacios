@@ -4,6 +4,7 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ApiErrorResponse, ApiErrorDetail } from '../../schemas/api-response.schema';
@@ -11,6 +12,7 @@ import { ZodValidationException } from 'nestjs-zod';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -48,6 +50,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         }
       }
     } else if (exception instanceof Error) {
+      this.logger.error(
+        `Error no controlado [${request.method} ${request.url}]: ${exception.message}`,
+        exception.stack,
+      );
       message = exception.message;
       error = exception.name;
     }

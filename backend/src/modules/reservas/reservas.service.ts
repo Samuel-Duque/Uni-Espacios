@@ -89,6 +89,7 @@ export class ReservasService {
               accion: 'CREACION_RESERVA',
               entidad: 'Reserva',
               entidadId: reserva.id,
+              ipAddress: null,
               detalles: {
                 motivo: dto.motivo,
                 espacioId: dto.espacioId,
@@ -101,7 +102,11 @@ export class ReservasService {
           return reserva;
         },
         {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          ...(process.env.PRISMA_ISOLATION_LEVEL
+            ? { isolationLevel: process.env.PRISMA_ISOLATION_LEVEL as any }
+            : process.env.NODE_ENV === 'production'
+              ? {}
+              : { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }),
           maxWait: 5000,
           timeout: 10000,
         },
@@ -439,9 +444,10 @@ export class ReservasService {
               accion: `DICTAMEN_RESERVA_${dto.estado}`,
               entidad: 'Reserva',
               entidadId: id,
+              ipAddress: null,
               detalles: {
                 estado: dto.estado,
-                observaciones: dto.observaciones,
+                observaciones: dto.observaciones || null,
               },
             },
           });
@@ -449,7 +455,11 @@ export class ReservasService {
           return reservaActualizada;
         },
         {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          ...(process.env.PRISMA_ISOLATION_LEVEL
+            ? { isolationLevel: process.env.PRISMA_ISOLATION_LEVEL as any }
+            : process.env.NODE_ENV === 'production'
+              ? {}
+              : { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }),
           maxWait: 5000,
           timeout: 10000,
         },

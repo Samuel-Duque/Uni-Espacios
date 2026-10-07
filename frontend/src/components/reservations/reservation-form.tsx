@@ -117,9 +117,9 @@ export function ReservationForm({
 
   const mutation = useMutation({
     mutationFn: async (data: FormInput) => {
-      // Build ISO 8601 strings
-      const fechaInicioIso = new Date(`${data.fecha}T${data.horaInicio}:00.000Z`).toISOString();
-      const fechaFinIso = new Date(`${data.fecha}T${data.horaFin}:00.000Z`).toISOString();
+      // Build ISO 8601 strings from local time
+      const fechaInicioIso = new Date(`${data.fecha}T${data.horaInicio}:00`).toISOString();
+      const fechaFinIso = new Date(`${data.fecha}T${data.horaFin}:00`).toISOString();
 
       return reservasApi.crear({
         espacioId: data.espacioId,

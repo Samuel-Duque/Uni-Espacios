@@ -111,14 +111,18 @@ export class DisponibilidadService {
     }
 
     // 3. Verificar cruce con Reservas previas APROBADAS o EN_USO
+    const whereReserva: Prisma.ReservaWhereInput = {
+      espacioId,
+      estado: { in: ['APROBADA', 'EN_USO'] },
+      fechaInicio: { lt: fechaFin },
+      fechaFin: { gt: fechaInicio },
+    };
+    if (excluirReservaId) {
+      whereReserva.id = { not: excluirReservaId };
+    }
+
     const reservaConflicto = await tx.reserva.findFirst({
-      where: {
-        espacioId,
-        id: excluirReservaId ? { not: excluirReservaId } : undefined,
-        estado: { in: ['APROBADA', 'EN_USO'] },
-        fechaInicio: { lt: fechaFin },
-        fechaFin: { gt: fechaInicio },
-      },
+      where: whereReserva,
     });
 
     if (reservaConflicto) {
