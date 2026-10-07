@@ -8,6 +8,7 @@ export class AppService {
   async getHealth(): Promise<{
     status: 'ok';
     database: 'connected';
+    version?: string;
     timestamp: string;
   }> {
     try {
