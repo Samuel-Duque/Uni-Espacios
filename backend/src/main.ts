@@ -27,13 +27,28 @@ async function bootstrap() {
     }),
   );
   app.use(cookieParser());
+  const corsOrigins = [
+    "http://localhost:3000",
+    "https://espacios.elpoli.edu.co",
+    ...(process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim())
+      : []),
+    ...(process.env.FRONTEND_URL
+      ? process.env.FRONTEND_URL.split(",").map((s) => s.trim())
+      : []),
+  ];
+
   app.enableCors({
-    origin: [
-      "http://localhost:3000",
-      "https://espacios.elpoli.edu.co",
-      ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : []),
-      ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
-    ],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (
+        corsOrigins.includes(origin) ||
+        /^https:\/\/[a-zA-Z0-9_.-]+\.vercel\.app$/.test(origin)
+      ) {
+        return callback(null, true);
+      }
+      return callback(new Error(`Origen ${origin} no permitido por política CORS`));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });

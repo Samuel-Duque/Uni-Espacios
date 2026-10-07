@@ -1,11 +1,29 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { PrismaService } from './prisma/prisma.service';
 
 @Injectable()
 export class AppService {
-  getHealth(): { status: string; timestamp: string } {
-    return {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-    };
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getHealth(): Promise<{
+    status: 'ok';
+    database: 'connected';
+    timestamp: string;
+  }> {
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      return {
+        status: 'ok',
+        database: 'connected',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      throw new ServiceUnavailableException({
+        status: 'error',
+        database: 'disconnected',
+        error: error?.message || 'Fallo de conectividad con la base de datos',
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 }

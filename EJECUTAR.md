@@ -7,10 +7,10 @@
 
 ## Requisitos Previos
 
-| Herramienta | Versión mínima | Descarga |
-|---|---|---|
-| Node.js | 20.x | https://nodejs.org |
-| npm | 10.x (incluido con Node) | — |
+| Herramienta    | Versión mínima             | Descarga                                       |
+| -------------- | -------------------------- | ---------------------------------------------- |
+| Node.js        | 20.x                       | https://nodejs.org                             |
+| npm            | 10.x (incluido con Node)   | —                                              |
 | Docker Desktop | Cualquier versión reciente | https://www.docker.com/products/docker-desktop |
 
 ---
@@ -19,10 +19,37 @@
 
 ```
 Uni-Espacios/
-├── backend/      → API REST (NestJS + Prisma)
-├── frontend/     → Aplicación Web (Next.js 16)
-└── EJECUTAR.md   → Este archivo
+├── backend/            → API REST (NestJS + Prisma)
+├── frontend/           → Aplicación Web (Next.js 16)
+├── docker-compose.yml  → Orquestación de contenedores
+└── EJECUTAR.md         → Este archivo
 ```
+
+---
+
+## 🐳 Opción Rápida con Docker Compose (Recomendada)
+
+Para desplegar todo el stack (MariaDB + Backend NestJS + Frontend Next.js) con un solo comando:
+
+```powershell
+docker compose up -d --build
+```
+
+Para aplicar migraciones y seed en la base de datos del contenedor:
+
+```powershell
+cd backend
+npx prisma migrate dev --name init
+npm run prisma:seed
+```
+
+Para detener todo el stack:
+
+```powershell
+docker compose down
+```
+
+---
 
 ---
 
@@ -48,6 +75,7 @@ docker run -d `
 ```
 
 > **Nota:** Si el contenedor ya existe de una ejecución anterior, usa este comando en su lugar:
+>
 > ```powershell
 > docker start uni-espacios-db
 > ```
@@ -73,6 +101,7 @@ npm run prisma:seed
 ```
 
 Salida esperada del seed:
+
 ```
 ✅ 4 usuarios institucionales creados/actualizados.
 ✅ Sede cargada: Sede Medellín - Poblado
@@ -97,8 +126,8 @@ npm run start:dev
 El servidor estará listo cuando aparezca:
 
 ```
-🚀 Servidor ejecutándose en http://localhost:3001/api
-📑 Documentación Swagger disponible en http://localhost:3001/api/docs
+🚀 Servidor ejecutándose en http://localhost:4000/api
+📑 Documentación Swagger disponible en http://localhost:4000/api/docs
 ```
 
 ---
@@ -124,11 +153,11 @@ El servidor estará listo cuando aparezca:
 
 ## URLs del Sistema
 
-| Servicio | URL |
-|---|---|
-| **Aplicación Web** | http://localhost:3000 |
-| **API REST** | http://localhost:3001/api |
-| **Documentación Swagger** | http://localhost:3001/api/docs |
+| Servicio                  | URL                            |
+| ------------------------- | ------------------------------ |
+| **Aplicación Web**        | http://localhost:3000          |
+| **API REST**              | http://localhost:4000/api      |
+| **Documentación Swagger** | http://localhost:4000/api/docs |
 
 ---
 
@@ -136,12 +165,12 @@ El servidor estará listo cuando aparezca:
 
 Todos los usuarios usan la misma contraseña: **`Poli2026*!`**
 
-| Email | Rol | Acceso |
-|---|---|---|
-| `admin@elpoli.edu.co` | SUPERADMIN | Panel de administración completo |
+| Email                             | Rol            | Acceso                           |
+| --------------------------------- | -------------- | -------------------------------- |
+| `admin@elpoli.edu.co`             | SUPERADMIN     | Panel de administración completo |
 | `gestor.ingenieria@elpoli.edu.co` | GESTOR_ESPACIO | Gestión y aprobación de reservas |
-| `docente.ciencias@elpoli.edu.co` | DOCENTE | Catálogo y reservas |
-| `estudiante.demo@elpoli.edu.co` | ESTUDIANTE | Catálogo y reservas |
+| `docente.ciencias@elpoli.edu.co`  | DOCENTE        | Catálogo y reservas              |
+| `estudiante.demo@elpoli.edu.co`   | ESTUDIANTE     | Catálogo y reservas              |
 
 ---
 
@@ -150,17 +179,20 @@ Todos los usuarios usan la misma contraseña: **`Poli2026*!`**
 Desde la segunda vez en adelante, solo necesitas:
 
 **Terminal 1 — Base de datos:**
+
 ```powershell
 docker start uni-espacios-db
 ```
 
 **Terminal 2 — Backend:**
+
 ```powershell
 cd backend
 npm run start:dev
 ```
 
 **Terminal 3 — Frontend:**
+
 ```powershell
 cd frontend
 npm run dev
@@ -190,9 +222,10 @@ Los servidores de backend y frontend se detienen con `Ctrl + C` en cada terminal
 **Error al correr migraciones: `shadow database denied`**  
 → Ejecuta el paso 3 (permisos) antes de volver a intentar las migraciones.
 
-**Puerto 3000 o 3001 ya en uso**  
+**Puerto 3000 o 4000 ya en uso**  
 → Identifica y termina el proceso que lo ocupa:
+
 ```powershell
-netstat -ano | findstr :3001
+netstat -ano | findstr :4000
 taskkill /PID <PID> /F
 ```

@@ -206,7 +206,7 @@ export const RegisterSchema = z.object({
     .trim()
     .min(3, { message: 'El nombre completo debe tener al menos 3 caracteres' })
     .max(100, { message: 'El nombre completo no puede superar 100 caracteres' }),
-  rol: RolUsuarioEnum.default('ESTUDIANTE'),
+  // El campo 'rol' fue removido del contrato público en TSK-1002. Se asigna siempre como ESTUDIANTE en backend.
   documentoIdentidad: z
     .string()
     .trim()

@@ -21,6 +21,7 @@ export class InventarioController {
   constructor(private readonly inventarioService: InventarioService) {}
 
   @Get('espacios/:id/inventario')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Retorna la lista de implementos asignados a un espacio físico' })
   @ApiResponse({ status: 200, description: 'Lista de inventario del espacio obtenida exitosamente' })
   @ApiResponse({ status: 404, description: 'Espacio no encontrado' })
@@ -29,6 +30,7 @@ export class InventarioController {
   }
 
   @Get('inventario/:id')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtiene el detalle de un implemento por ID' })
   @ApiResponse({ status: 200, description: 'Implemento encontrado' })
   @ApiResponse({ status: 404, description: 'Implemento no encontrado' })

@@ -14,6 +14,45 @@ export interface FranjaHoraria {
   descripcionBloqueo?: string;
 }
 
+/**
+ * Extrae componentes de fecha y hora en la zona horaria institucional America/Bogota (UTC-5).
+ */
+export function getBogotaDateTime(date: Date): {
+  fechaSolo: Date;
+  diaSemana: number; // 1 = Lunes .. 7 = Domingo
+  horaStr: string;   // "HH:mm"
+} {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    weekday: 'short',
+  });
+  const parts = formatter.formatToParts(date);
+  const partMap: Record<string, string> = {};
+  for (const p of parts) {
+    partMap[p.type] = p.value;
+  }
+  const weekdayMap: Record<string, number> = {
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+    Sun: 7,
+  };
+  const diaSemana = weekdayMap[partMap.weekday] || 1;
+  const horaStr = `${partMap.hour}:${partMap.minute}`;
+  const fechaSolo = new Date(`${partMap.year}-${partMap.month}-${partMap.day}T00:00:00.000Z`);
+
+  return { fechaSolo, diaSemana, horaStr };
+}
+
 @Injectable()
 export class DisponibilidadService {
   constructor(private readonly prisma: PrismaService) {}
@@ -41,8 +80,10 @@ export class DisponibilidadService {
       );
     }
 
-    // 2. Verificar cruce con Clases Fijas del Periodo Activo
-    const fechaSolo = new Date(fechaInicio.toISOString().split('T')[0]);
+    // 2. Verificar cruce con Clases Fijas del Periodo Activo (Zona Horaria America/Bogota)
+    const { fechaSolo, diaSemana, horaStr: horaIniStr } = getBogotaDateTime(fechaInicio);
+    const { horaStr: horaFinStr } = getBogotaDateTime(fechaFin);
+
     const periodoActivo = await tx.periodoAcademico.findFirst({
       where: {
         estado: 'ACTIVO',
@@ -52,11 +93,6 @@ export class DisponibilidadService {
     });
 
     if (periodoActivo) {
-      // 1 = Lunes .. 7 = Domingo
-      const diaSemana = fechaInicio.getUTCDay() === 0 ? 7 : fechaInicio.getUTCDay();
-      const horaIniStr = fechaInicio.toISOString().substring(11, 16); // "HH:mm"
-      const horaFinStr = fechaFin.toISOString().substring(11, 16);
-
       const claseConflicto = await tx.claseFija.findFirst({
         where: {
           espacioId,
@@ -113,16 +149,18 @@ export class DisponibilidadService {
       throw new NotFoundException(`El espacio físico con ID ${espacioId} no existe`);
     }
 
-    const startOfDay = new Date(`${fechaStr}T00:00:00.000Z`);
-    const endOfDay = new Date(`${fechaStr}T23:59:59.999Z`);
-    const diaSemana = startOfDay.getUTCDay() === 0 ? 7 : startOfDay.getUTCDay();
+    // Límites del día en zona horaria America/Bogota (UTC-5)
+    const startOfDay = new Date(`${fechaStr}T00:00:00-05:00`);
+    const endOfDay = new Date(`${fechaStr}T23:59:59.999-05:00`);
+    const midday = new Date(`${fechaStr}T12:00:00-05:00`);
+    const { diaSemana, fechaSolo } = getBogotaDateTime(midday);
 
     // 1. Obtener periodo activo y clases fijas del día
     const periodoActivo = await this.prisma.periodoAcademico.findFirst({
       where: {
         estado: 'ACTIVO',
-        fechaInicio: { lte: startOfDay },
-        fechaFin: { gte: startOfDay },
+        fechaInicio: { lte: fechaSolo },
+        fechaFin: { gte: fechaSolo },
       },
     });
 
@@ -177,9 +215,9 @@ export class DisponibilidadService {
         continue;
       }
 
-      // Evaluar si choca con reserva aprobada
-      const slotStart = new Date(`${fechaStr}T${hIniStr}:00.000Z`);
-      const slotEnd = new Date(`${fechaStr}T${hFinStr}:00.000Z`);
+      // Evaluar si choca con reserva aprobada (comparando en timestamps absolutos UTC)
+      const slotStart = new Date(`${fechaStr}T${hIniStr}:00-05:00`);
+      const slotEnd = new Date(`${fechaStr}T${hFinStr}:00-05:00`);
       const reserva = reservasAprobadas.find(
         (r) => r.fechaInicio < slotEnd && r.fechaFin > slotStart,
       );

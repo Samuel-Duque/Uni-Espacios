@@ -62,7 +62,6 @@ async function main() {
         documentoIdentidad: u.documentoIdentidad,
         telefono: u.telefono,
         rol: u.rol,
-        passwordHash: u.passwordHash,
         activo: true,
       },
       create: u,

@@ -21,6 +21,7 @@ export class EspaciosController {
   constructor(private readonly espaciosService: EspaciosService) {}
 
   @Get()
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Catálogo de espacios con filtros facetados y paginación' })
   @ApiResponse({ status: 200, description: 'Catálogo de espacios obtenido exitosamente' })
   async findAll(@Query() query: EspacioFiltrosQueryDto) {
@@ -28,6 +29,7 @@ export class EspaciosController {
   }
 
   @Get(':id')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtiene la ficha técnica completa del espacio con inventario' })
   @ApiResponse({ status: 200, description: 'Ficha técnica del espacio encontrada' })
   @ApiResponse({ status: 404, description: 'Espacio no encontrado' })

@@ -242,3 +242,28 @@ NEXT_PUBLIC_API_URL="http://localhost:4000/api"
    * Frontend: `http://localhost:3000`
    * Backend API: `http://localhost:4000/api`
    * Swagger Docs: `http://localhost:4000/api/docs`
+
+---
+
+## ☁️ 5. Despliegue Cloud: Vercel (Frontend) y Render (Backend)
+
+### 5.1 Arquitectura PaaS
+- **Frontend (Vercel):** Next.js 14+ con App Router, Edge Middleware para RBAC y Server-Side Session Route Handlers (`/api/session`).
+- **Backend (Render):** Web Service NestJS 10+ con arranque seguro mediante `npm run start:migrate:prod` y verificación de conectividad periódica en `/api/health`.
+- **Infraestructura como Código (IaC):** Especificación declarativa en `render.yaml` (Blueprint de Render).
+- **Base de Datos Cloud (MySQL / MariaDB):** Compatible con TiDB Cloud Serverless, Aiven for MySQL, Railway o MariaDB dedicada con SSL.
+
+### 5.2 Configuración del Backend en Render (`render.yaml`)
+El archivo `render.yaml` en la raíz automatiza el aprovisionamiento del Web Service con las variables requeridas:
+* **Runtime:** Node.js (o Docker mediante `backend/Dockerfile`).
+* **Health Check:** `/api/health` (valida disponibilidad de NestJS y ejecución de `SELECT 1` en la BD).
+* **Manejo de Cookies Cross-Domain:** `COOKIE_SAME_SITE="none"` con flag `secure: true` para habilitar el intercambio seguro del token de refresco entre los dominios `*.vercel.app` y `*.onrender.com`.
+* **CORS:** Soporte para orígenes dinámicos de producción y vistas previas de PRs (`https://*.vercel.app`).
+
+### 5.3 Configuración del Frontend en Vercel (`frontend/vercel.json`)
+* **Root Directory:** `frontend`
+* **Framework Preset:** `Next.js`
+* **Variables de Entorno:**
+  * `NEXT_PUBLIC_API_URL`: URL pública del servicio de Render con sufijo `/api` (ej. `https://uni-espacios-backend.onrender.com/api`).
+* **Rutas y Middleware:** El middleware de Next.js lee las cookies de sesión httpOnly gestionadas por el Route Handler `/api/session`, garantizando protección RBAC sin exponer tokens en JavaScript del cliente.
+

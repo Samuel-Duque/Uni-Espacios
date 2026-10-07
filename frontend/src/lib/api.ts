@@ -4,12 +4,136 @@ import {
   AuthResponse,
   UsuarioResponse,
 } from "../schemas/usuario.schema";
-import { ApiResponse } from "../schemas/api-response.schema";
+import { ApiResponse, PaginationMeta } from "../schemas/api-response.schema";
+import {
+  CreateEspacioInput,
+  UpdateEspacioInput,
+  Sede,
+  Bloque,
+  TipoEspacio,
+  EstadoEspacio,
+} from "../schemas/espacio.schema";
+import {
+  CreateItemInventarioInput,
+  UpdateItemInventarioInput,
+  ItemInventarioResponse,
+} from "../schemas/inventario.schema";
+import {
+  CrearReservaInput,
+  CambiarEstadoReservaInput,
+  EstadoReserva,
+} from "../schemas/reserva.schema";
+import {
+  CheckInInput,
+  CheckOutInput,
+  TipoVerificacion,
+  EstadoGeneralVerificacion,
+  EstadoItemVerificacion,
+} from "../schemas/verificacion.schema";
+import {
+  PeriodoAcademicoInput,
+  CreateClaseFijaInput,
+  BulkCreateClaseFijaInput,
+  EstadoPeriodo,
+} from "../schemas/calendario.schema";
+
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
+export interface EspacioEntity {
+  id: number;
+  bloqueId: number;
+  identificador: string;
+  nombre?: string;
+  tipo: TipoEspacio;
+  capacidad: number;
+  piso?: number | null;
+  ubicacionDetalle?: string | null;
+  permiteReservaDirecta: boolean;
+  estado: EstadoEspacio;
+  bloque?: Bloque & { nombre?: string; sede?: Sede };
+  inventario?: ItemInventarioResponse[];
+}
+
+export interface ItemInventarioEntity extends ItemInventarioResponse {}
+
+export interface ReservaEntity {
+  id: number;
+  espacioId: number;
+  usuarioId: number;
+  fechaInicio: string;
+  fechaFin: string;
+  motivo: string;
+  cantidadAsistentesEstimada?: number | null;
+  estado: EstadoReserva;
+  espacio?: EspacioEntity;
+  usuario?: Pick<
+    UsuarioResponse,
+    "id" | "nombreCompleto" | "email" | "rol" | "documentoIdentidad" | "telefono"
+  >;
+  aprobaciones?: Array<{
+    id: number;
+    reservaId: number;
+    aprobadorId: number;
+    estado: string;
+    observaciones?: string | null;
+    fechaAccion: string;
+    aprobador?: { id: number; nombreCompleto: string; email?: string };
+  }>;
+  verificaciones?: Array<VerificacionEntity>;
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
+export interface VerificacionEntity {
+  id: number;
+  reservaId: number;
+  usuarioVerificadorId: number;
+  tipo: TipoVerificacion;
+  estadoGeneral: EstadoGeneralVerificacion;
+  observaciones?: string | null;
+  fechaHora: string;
+  detalles?: Array<{
+    id: number;
+    itemInventarioId: number;
+    estadoItem: EstadoItemVerificacion;
+    cantidadEncontrada: number;
+    observacionNovedad?: string | null;
+    itemInventario?: ItemInventarioEntity;
+  }>;
+  verificador?: { id: number; nombreCompleto: string };
+}
+
+export interface PeriodoAcademicoEntity {
+  id: number;
+  codigo: string;
+  fechaInicio: string;
+  fechaFin: string;
+  estado: EstadoPeriodo;
+}
+
+export interface ClaseFijaEntity {
+  id: number;
+  espacioId: number;
+  periodoId: number;
+  diaSemana: number;
+  horaInicio: string;
+  horaFin: string;
+  asignatura: string;
+  docente: string;
+  grupo?: string | null;
+}
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
-// Gestión de token en memoria y cookies de cliente
+// ─────────────────────────────────────────────────────────────────────────────
+// Gestión del Access Token en memoria (no en cookies JS)
+// TSK-1005: las cookies auth_token / user_role / user_id son emitidas por el
+// Route Handler /api/session (server-side, httpOnly) — NO desde document.cookie.
+// ─────────────────────────────────────────────────────────────────────────────
 let currentAccessToken: string | null = null;
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -28,39 +152,46 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+/**
+ * Sincroniza las cookies de sesión httpOnly a través del Route Handler server-side.
+ * Se llama después de login, register, refresh y logout.
+ */
+const syncSessionCookies = async (
+  token: string | null,
+  user: Pick<UsuarioResponse, "id" | "rol"> | null,
+): Promise<void> => {
+  if (typeof window === "undefined") return;
+  try {
+    await fetch("/api/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, user }),
+    });
+  } catch {
+    // Silenciar fallos de red al sincronizar cookies — no bloquear el flujo principal
+  }
+};
+
+/**
+ * Actualiza el token en memoria e inicia la sincronización de cookies httpOnly.
+ * No escribe en document.cookie directamente.
+ */
 export const setAccessToken = (
   token: string | null,
   user?: UsuarioResponse | null,
-) => {
+): void => {
   currentAccessToken = token;
-  if (typeof document !== "undefined") {
-    if (token) {
-      // Guardar cookie segura para Next.js Middleware
-      document.cookie = `auth_token=${token}; path=/; max-age=900; SameSite=Lax`;
-      if (user) {
-        document.cookie = `user_role=${user.rol}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `user_id=${user.id}; path=/; max-age=604800; SameSite=Lax`;
-      }
-    } else {
-      document.cookie = "auth_token=; path=/; max-age=0; SameSite=Lax";
-      document.cookie = "user_role=; path=/; max-age=0; SameSite=Lax";
-      document.cookie = "user_id=; path=/; max-age=0; SameSite=Lax";
-    }
-  }
+  // Sincronizar cookies httpOnly via Route Handler (no bloquea el flujo)
+  syncSessionCookies(token, user ? { id: user.id, rol: user.rol } : null);
 };
 
 export const getAccessToken = (): string | null => {
-  if (currentAccessToken) return currentAccessToken;
-  if (typeof document !== "undefined") {
-    const match = document.cookie.match(/(^|;)\s*auth_token=([^;]+)/);
-    if (match) {
-      currentAccessToken = match[2];
-      return currentAccessToken;
-    }
-  }
-  return null;
+  return currentAccessToken;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Error tipado para respuestas fallidas de la API
+// ─────────────────────────────────────────────────────────────────────────────
 export class ApiError extends Error {
   statusCode: number;
   data: unknown;
@@ -73,6 +204,9 @@ export class ApiError extends Error {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Cliente HTTP central con interceptor automático de refresh en 401
+// ─────────────────────────────────────────────────────────────────────────────
 export async function apiClient<T = unknown>(
   endpoint: string,
   options: RequestInit = {},
@@ -94,13 +228,13 @@ export async function apiClient<T = unknown>(
   const config: RequestInit = {
     ...options,
     headers,
-    credentials: "include", // Envía cookies HttpOnly (refreshToken)
+    credentials: "include", // Envía la cookie HttpOnly refreshToken al backend
   };
 
   try {
     const response = await fetch(url, config);
 
-    // Caso 401: Intentar refrescar Access Token automáticamente
+    // ── 401: intentar renovar el Access Token automáticamente ───────────────
     if (
       response.status === 401 &&
       !endpoint.includes("/auth/login") &&
@@ -108,6 +242,7 @@ export async function apiClient<T = unknown>(
       !endpoint.includes("/auth/register")
     ) {
       if (isRefreshing) {
+        // Encolar la petición fallida hasta que el refresh termine
         return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         }).then((newToken) => {
@@ -133,6 +268,7 @@ export async function apiClient<T = unknown>(
           accessToken: string;
           usuario: UsuarioResponse;
         }> = await refreshRes.json();
+
         const newToken = refreshData.data?.accessToken;
         const usuario = refreshData.data?.usuario;
 
@@ -140,7 +276,8 @@ export async function apiClient<T = unknown>(
           throw new Error("Formato de respuesta de refresh inválido");
         }
 
-        setAccessToken(newToken, usuario);
+        // Actualizar token en memoria y sincronizar cookies httpOnly (TSK-1005)
+        setAccessToken(newToken, usuario ?? null);
         processQueue(null, newToken);
 
         headers.set("Authorization", `Bearer ${newToken}`);
@@ -176,8 +313,8 @@ export async function apiClient<T = unknown>(
       throw new ApiError(errorMsg, response.status, data);
     }
 
-    // Si viene envuelto en ApiResponse de NestJS Interceptor, extraer data si existe
-    // Excepción: si también tiene 'meta' (respuesta paginada), devolver el objeto completo
+    // Desempaquetar el envelope ApiResponse del interceptor de NestJS
+    // Excepción: respuestas paginadas con 'meta' se devuelven completas
     if (
       data &&
       typeof data === "object" &&
@@ -185,7 +322,7 @@ export async function apiClient<T = unknown>(
       "success" in data
     ) {
       if ("meta" in data) {
-        return data as T;
+        return { data: (data as any).data, meta: (data as any).meta } as T;
       }
       return data.data as T;
     }
@@ -203,6 +340,9 @@ export async function apiClient<T = unknown>(
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers de verbo HTTP
+// ─────────────────────────────────────────────────────────────────────────────
 export const api = {
   get: <T = unknown>(endpoint: string, options?: RequestInit) =>
     apiClient<T>(endpoint, { ...options, method: "GET" }),
@@ -233,181 +373,193 @@ export const api = {
     apiClient<T>(endpoint, { ...options, method: "DELETE" }),
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Auth API
+// ─────────────────────────────────────────────────────────────────────────────
 export const authApi = {
-  login: async (dto: LoginInput): Promise<AuthResponse> => {
-    return api.post<AuthResponse>("/auth/login", dto);
-  },
+  login: (dto: LoginInput): Promise<AuthResponse> =>
+    api.post<AuthResponse>("/auth/login", dto),
 
-  register: async (dto: RegisterInput): Promise<AuthResponse> => {
-    return api.post<AuthResponse>("/auth/register", dto);
-  },
+  register: (dto: RegisterInput): Promise<AuthResponse> =>
+    api.post<AuthResponse>("/auth/register", dto),
 
-  refresh: async (): Promise<{
-    accessToken: string;
-    usuario: UsuarioResponse;
-  }> => {
-    return api.post<{ accessToken: string; usuario: UsuarioResponse }>(
+  refresh: (): Promise<{ accessToken: string; usuario: UsuarioResponse }> =>
+    api.post<{ accessToken: string; usuario: UsuarioResponse }>(
       "/auth/refresh",
+    ),
+
+  logout: (): Promise<{ message: string }> =>
+    api.post<{ message: string }>("/auth/logout"),
+
+  getMe: (): Promise<UsuarioResponse> => api.get<UsuarioResponse>("/auth/me"),
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Verificaciones API
+// ─────────────────────────────────────────────────────────────────────────────
+export const verificacionesApi = {
+  getInventarioByEspacio: (
+    espacioId: number,
+  ): Promise<ItemInventarioEntity[]> =>
+    api.get<ItemInventarioEntity[]>(`/espacios/${espacioId}/inventario`),
+
+  getVerificacionesByReserva: (
+    reservaId: number,
+  ): Promise<VerificacionEntity[]> =>
+    api.get<VerificacionEntity[]>(`/reservas/${reservaId}/verificaciones`),
+
+  checkIn: (
+    reservaId: number,
+    dto: CheckInInput,
+  ): Promise<VerificacionEntity> =>
+    api.post<VerificacionEntity>(`/reservas/${reservaId}/check-in`, dto),
+
+  checkOut: (
+    reservaId: number,
+    dto: CheckOutInput,
+  ): Promise<VerificacionEntity> =>
+    api.post<VerificacionEntity>(`/reservas/${reservaId}/check-out`, dto),
+
+  getNovedades: (
+    page = 1,
+    limit = 10,
+  ): Promise<PaginatedResult<VerificacionEntity>> =>
+    api.get<PaginatedResult<VerificacionEntity>>(
+      `/verificaciones/novedades?page=${page}&limit=${limit}`,
+    ),
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inventario API
+// ─────────────────────────────────────────────────────────────────────────────
+export const inventarioApi = {
+  getByEspacio: (
+    espacioId: number,
+  ): Promise<ItemInventarioEntity[]> =>
+    api.get<ItemInventarioEntity[]>(`/espacios/${espacioId}/inventario`),
+
+  getById: (id: number): Promise<ItemInventarioEntity> =>
+    api.get<ItemInventarioEntity>(`/inventario/${id}`),
+
+  create: (dto: CreateItemInventarioInput): Promise<ItemInventarioEntity> =>
+    api.post<ItemInventarioEntity>("/inventario", dto),
+
+  update: (
+    id: number,
+    dto: UpdateItemInventarioInput,
+  ): Promise<ItemInventarioEntity> =>
+    api.patch<ItemInventarioEntity>(`/inventario/${id}`, dto),
+
+  remove: (id: number): Promise<{ message: string }> =>
+    api.delete<{ message: string }>(`/inventario/${id}`),
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reservas API
+// ─────────────────────────────────────────────────────────────────────────────
+export const reservasApi = {
+  getMisReservas: (query?: {
+    estado?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResult<ReservaEntity>> => {
+    const params = new URLSearchParams();
+    if (query?.estado) params.append("estado", query.estado);
+    if (query?.page) params.append("page", query.page.toString());
+    if (query?.limit) params.append("limit", query.limit.toString());
+    const qs = params.toString();
+    return api.get<PaginatedResult<ReservaEntity>>(
+      `/reservas/mis-reservas${qs ? `?${qs}` : ""}`,
     );
   },
 
-  logout: async (): Promise<{ message: string }> => {
-    return api.post<{ message: string }>("/auth/logout");
-  },
+  getById: (id: number): Promise<ReservaEntity> =>
+    api.get<ReservaEntity>(`/reservas/${id}`),
 
-  getMe: async (): Promise<UsuarioResponse> => {
-    return api.get<UsuarioResponse>("/auth/me");
-  },
-};
+  crear: (dto: CrearReservaInput): Promise<ReservaEntity> =>
+    api.post<ReservaEntity>("/reservas", dto),
 
-export const verificacionesApi = {
-  getInventarioByEspacio: async (espacioId: number) => {
-    return api.get<any[]>(`/espacios/${espacioId}/inventario`);
-  },
+  cancelar: (id: number): Promise<ReservaEntity> =>
+    api.patch<ReservaEntity>(`/reservas/${id}/cancelar`),
 
-  getVerificacionesByReserva: async (reservaId: number) => {
-    return api.get<any[]>(`/reservas/${reservaId}/verificaciones`);
-  },
-
-  checkIn: async (
-    reservaId: number,
-    dto: { observacionesGenerales?: string; items: any[] },
-  ) => {
-    return api.post<any>(`/reservas/${reservaId}/check-in`, dto);
-  },
-
-  checkOut: async (
-    reservaId: number,
-    dto: { observacionesGenerales?: string; items: any[] },
-  ) => {
-    return api.post<any>(`/reservas/${reservaId}/check-out`, dto);
-  },
-
-  getNovedades: async (page = 1, limit = 10) => {
-    return api.get<{
-      data: any[];
-      meta: { total: number; page: number; limit: number; totalPages: number };
-    }>(`/verificaciones/novedades?page=${page}&limit=${limit}`);
-  },
-};
-
-export const inventarioApi = {
-  getByEspacio: async (espacioId: number) => {
-    return api.get<any[]>(`/espacios/${espacioId}/inventario`);
-  },
-
-  getById: async (id: number) => {
-    return api.get<any>(`/inventario/${id}`);
-  },
-
-  create: async (dto: any) => {
-    return api.post<any>("/inventario", dto);
-  },
-
-  update: async (id: number, dto: any) => {
-    return api.patch<any>(`/inventario/${id}`, dto);
-  },
-
-  remove: async (id: number) => {
-    return api.delete<any>(`/inventario/${id}`);
-  },
-};
-
-export const reservasApi = {
-  getMisReservas: async (query?: {
+  getGestion: (query?: {
     estado?: string;
+    espacioId?: number;
+    sedeId?: number;
+    bloqueId?: number;
     page?: number;
     limit?: number;
-  }) => {
+  }): Promise<PaginatedResult<ReservaEntity>> => {
     const params = new URLSearchParams();
     if (query?.estado) params.append("estado", query.estado);
+    if (query?.espacioId) params.append("espacioId", query.espacioId.toString());
+    if (query?.sedeId) params.append("sedeId", query.sedeId.toString());
+    if (query?.bloqueId) params.append("bloqueId", query.bloqueId.toString());
     if (query?.page) params.append("page", query.page.toString());
     if (query?.limit) params.append("limit", query.limit.toString());
     const qs = params.toString();
-    return api.get<{
-      data: any[];
-      meta: { total: number; page: number; limit: number; totalPages: number };
-    }>(`/reservas/mis-reservas${qs ? `?${qs}` : ""}`);
+    return api.get<PaginatedResult<ReservaEntity>>(
+      `/reservas/gestion${qs ? `?${qs}` : ""}`,
+    );
   },
 
-  getById: async (id: number) => {
-    return api.get<any>(`/reservas/${id}`);
-  },
-
-  crear: async (dto: any) => {
-    return api.post<any>("/reservas", dto);
-  },
-
-  cancelar: async (id: number) => {
-    return api.patch<any>(`/reservas/${id}/cancelar`);
-  },
-
-  getGestion: async (query?: {
-    estado?: string;
-    page?: number;
-    limit?: number;
-  }) => {
-    const params = new URLSearchParams();
-    if (query?.estado) params.append("estado", query.estado);
-    if (query?.page) params.append("page", query.page.toString());
-    if (query?.limit) params.append("limit", query.limit.toString());
-    const qs = params.toString();
-    return api.get<{
-      data: any[];
-      meta: { total: number; page: number; limit: number; totalPages: number };
-    }>(`/reservas/gestion${qs ? `?${qs}` : ""}`);
-  },
-
-  cambiarEstado: async (
+  cambiarEstado: (
     id: number,
     dto: { estado: string; observaciones?: string },
-  ) => {
-    return api.patch<any>(`/reservas/${id}/estado`, dto);
-  },
+  ): Promise<ReservaEntity> =>
+    api.patch<ReservaEntity>(`/reservas/${id}/estado`, dto),
+
+  procesarNoShows: (): Promise<{ canceladas: number; ids: number[] }> =>
+    api.post<{ canceladas: number; ids: number[] }>("/reservas/procesar-no-shows"),
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Usuarios API
+// ─────────────────────────────────────────────────────────────────────────────
 export const usuariosApi = {
-  inhabilitar: async (id: number, motivo: string) => {
-    return api.patch<any>(`/usuarios/${id}/inhabilitar`, { motivo });
-  },
+  inhabilitar: (id: number, motivo: string): Promise<UsuarioResponse> =>
+    api.patch<UsuarioResponse>(`/usuarios/${id}/inhabilitar`, { motivo }),
 
-  rehabilitar: async (id: number) => {
-    return api.patch<any>(`/usuarios/${id}/rehabilitar`);
-  },
+  rehabilitar: (id: number): Promise<UsuarioResponse> =>
+    api.patch<UsuarioResponse>(`/usuarios/${id}/rehabilitar`),
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Espacios API
+// ─────────────────────────────────────────────────────────────────────────────
 export const espaciosApi = {
-  getAll: async (query?: Record<string, any>) => {
+  getAll: (
+    query?: Record<string, unknown>,
+  ): Promise<PaginatedResult<EspacioEntity>> => {
     const params = new URLSearchParams();
     if (query) {
       Object.entries(query).forEach(([k, v]) => {
-        if (v !== undefined && v !== null && v !== "") {
+        if (v !== undefined && v !== null && v !== "")
           params.append(k, String(v));
-        }
       });
     }
     const qs = params.toString();
-    return api.get<{ data: any[]; meta: any }>(
+    return api.get<PaginatedResult<EspacioEntity>>(
       `/espacios${qs ? `?${qs}` : ""}`,
     );
   },
 
-  getById: async (id: number) => {
-    return api.get<any>(`/espacios/${id}`);
-  },
+  getById: (id: number): Promise<EspacioEntity> =>
+    api.get<EspacioEntity>(`/espacios/${id}`),
 
-  create: async (dto: any) => {
-    return api.post<any>("/espacios", dto);
-  },
+  create: (dto: CreateEspacioInput): Promise<EspacioEntity> =>
+    api.post<EspacioEntity>("/espacios", dto),
 
-  update: async (id: number, dto: any) => {
-    return api.patch<any>(`/espacios/${id}`, dto);
-  },
+  update: (id: number, dto: UpdateEspacioInput): Promise<EspacioEntity> =>
+    api.patch<EspacioEntity>(`/espacios/${id}`, dto),
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Disponibilidad API
+// ─────────────────────────────────────────────────────────────────────────────
 export const disponibilidadApi = {
-  getDisponibilidad: async (espacioId: number, fecha: string) => {
-    return api.get<{
+  getDisponibilidad: (espacioId: number, fecha: string) =>
+    api.get<{
       espacioId: number;
       fecha: string;
       espacio: { identificador: string; tipo: string; estado: string };
@@ -422,94 +574,58 @@ export const disponibilidadApi = {
           | "ESPACIO_INACTIVO";
         descripcionBloqueo?: string;
       }>;
-    }>(`/espacios/${espacioId}/disponibilidad?fecha=${fecha}`);
-  },
+    }>(`/espacios/${espacioId}/disponibilidad?fecha=${fecha}`),
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Infraestructura: Sedes, Bloques, Periodos, Clases Fijas
+// ─────────────────────────────────────────────────────────────────────────────
 export const sedesApi = {
-  getAll: async () => {
-    return api.get<any[]>("/sedes");
-  },
-
-  getById: async (id: number) => {
-    return api.get<any>(`/sedes/${id}`);
-  },
-
-  create: async (dto: {
-    nombre: string;
-    ciudad: string;
-    direccion: string;
-  }) => {
-    return api.post<any>("/sedes", dto);
-  },
+  getAll: (): Promise<Sede[]> => api.get<Sede[]>("/sedes"),
+  getById: (id: number): Promise<Sede> => api.get<Sede>(`/sedes/${id}`),
+  create: (dto: { nombre: string; ciudad: string; direccion: string }): Promise<Sede> =>
+    api.post<Sede>("/sedes", dto),
 };
 
 export const bloquesApi = {
-  getAll: async (sedeId?: number) => {
-    const qs = sedeId ? `?sedeId=${sedeId}` : "";
-    return api.get<any[]>(`/bloques${qs}`);
-  },
-
-  getById: async (id: number) => {
-    return api.get<any>(`/bloques/${id}`);
-  },
-
-  create: async (dto: {
+  getAll: (sedeId?: number): Promise<Bloque[]> =>
+    api.get<Bloque[]>(`/bloques${sedeId ? `?sedeId=${sedeId}` : ""}`),
+  getById: (id: number): Promise<Bloque> => api.get<Bloque>(`/bloques/${id}`),
+  create: (dto: {
     sedeId: number;
     codigo: string;
     descripcion?: string;
-  }) => {
-    return api.post<any>("/bloques", dto);
-  },
+  }): Promise<Bloque> => api.post<Bloque>("/bloques", dto),
 };
 
 export const periodosApi = {
-  getAll: async () => {
-    return api.get<any[]>("/periodos-academicos");
-  },
-
-  getById: async (id: number) => {
-    return api.get<any>(`/periodos-academicos/${id}`);
-  },
-
-  create: async (dto: {
+  getAll: (): Promise<PeriodoAcademicoEntity[]> =>
+    api.get<PeriodoAcademicoEntity[]>("/periodos-academicos"),
+  getById: (id: number): Promise<PeriodoAcademicoEntity> =>
+    api.get<PeriodoAcademicoEntity>(`/periodos-academicos/${id}`),
+  create: (dto: {
     codigo: string;
     fechaInicio: string;
     fechaFin: string;
     estado?: string;
-  }) => {
-    return api.post<any>("/periodos-academicos", dto);
-  },
-
-  activar: async (id: number) => {
-    return api.patch<any>(`/periodos-academicos/${id}/activar`);
-  },
+  }): Promise<PeriodoAcademicoEntity> =>
+    api.post<PeriodoAcademicoEntity>("/periodos-academicos", dto),
+  activar: (id: number): Promise<PeriodoAcademicoEntity> =>
+    api.patch<PeriodoAcademicoEntity>(`/periodos-academicos/${id}/activar`),
 };
 
 export const clasesFijasApi = {
-  getByEspacio: async (espacioId: number, periodoId?: number) => {
-    const qs = periodoId ? `?periodoId=${periodoId}` : "";
-    return api.get<any[]>(`/espacios/${espacioId}/clases-fijas${qs}`);
-  },
-
-  create: async (dto: {
-    espacioId: number;
-    periodoId: number;
-    diaSemana: number;
-    horaInicio: string;
-    horaFin: string;
-    asignatura: string;
-    docente: string;
-    grupo?: string;
-  }) => {
-    return api.post<any>("/clases-fijas", dto);
-  },
-
-  bulkCreate: async (dto: { clases: any[] }) => {
-    return api.post<any>("/clases-fijas/bulk", dto);
-  },
-
-  remove: async (id: number) => {
-    return api.delete<any>(`/clases-fijas/${id}`);
-  },
+  getByEspacio: (
+    espacioId: number,
+    periodoId?: number,
+  ): Promise<ClaseFijaEntity[]> =>
+    api.get<ClaseFijaEntity[]>(
+      `/espacios/${espacioId}/clases-fijas${periodoId ? `?periodoId=${periodoId}` : ""}`,
+    ),
+  create: (dto: CreateClaseFijaInput): Promise<ClaseFijaEntity> =>
+    api.post<ClaseFijaEntity>("/clases-fijas", dto),
+  bulkCreate: (dto: BulkCreateClaseFijaInput): Promise<{ count: number }> =>
+    api.post<{ count: number }>("/clases-fijas/bulk", dto),
+  remove: (id: number): Promise<{ message: string }> =>
+    api.delete<{ message: string }>(`/clases-fijas/${id}`),
 };

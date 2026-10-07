@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, {
   createContext,
@@ -8,16 +8,16 @@ import React, {
   useCallback,
   useMemo,
   ReactNode,
-} from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+} from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   UsuarioResponse,
   LoginInput,
   RegisterInput,
   RolUsuario,
-} from '../schemas/usuario.schema';
-import { authApi, setAccessToken, getAccessToken, ApiError } from './api';
+} from "../schemas/usuario.schema";
+import { authApi, setAccessToken, getAccessToken, ApiError } from "./api";
 
 interface AuthContextType {
   user: UsuarioResponse | null;
@@ -32,6 +32,8 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   isGestor: boolean;
   isDocenteOrAdmin: boolean;
+  isDocente: boolean;
+  isAdministrativo: boolean;
   isEstudiante: boolean;
   hasRole: (...roles: RolUsuario[]) => boolean;
   inhabilitadoParaReservar: boolean;
@@ -39,7 +41,39 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_USER_KEY = 'uni_espacios_user_profile';
+// TSK-1006: solo se persiste en localStorage la información no sensible necesaria
+// para hidratación de la UI. Los campos PII (documentoIdentidad, telefono,
+// motivoInhabilitacion) nunca se guardan en storage.
+const LOCAL_STORAGE_USER_KEY = "uni_espacios_user_profile";
+
+interface StoredUserProfile {
+  id: number;
+  email: string;
+  rol: RolUsuario;
+  nombreCompleto: string;
+  inhabilitadoParaReservar: boolean;
+  activo: boolean;
+}
+
+const toStoredProfile = (user: UsuarioResponse): StoredUserProfile => ({
+  id: user.id,
+  email: user.email,
+  rol: user.rol,
+  nombreCompleto: user.nombreCompleto,
+  inhabilitadoParaReservar: user.inhabilitadoParaReservar,
+  activo: user.activo,
+});
+
+const readStoredProfile = (): StoredUserProfile | null => {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredUserProfile;
+  } catch {
+    localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
+    return null;
+  }
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UsuarioResponse | null>(null);
@@ -47,41 +81,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const router = useRouter();
 
-  // Inicializar estado desde caché / verificación de sesión
+  // Inicializar estado desde caché / verificación de sesión al montar
   useEffect(() => {
     const initAuth = async () => {
       try {
         const storedToken = getAccessToken();
-        const storedUser = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
 
-        if (storedUser) {
-          try {
-            setUser(JSON.parse(storedUser));
-          } catch {
-            localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
-          }
+        // TSK-1006: mostrar el perfil reducido del storage mientras llega /me
+        const cachedProfile = readStoredProfile();
+        if (cachedProfile) {
+          // Cast parcial para pre-poblar el contexto con datos no sensibles
+          setUser(cachedProfile as unknown as UsuarioResponse);
         }
 
         if (storedToken) {
           setTokenState(storedToken);
-          // Verificar validez con el backend
+          // Verificar validez con el backend y obtener el perfil completo
           const me = await authApi.getMe();
           setUser(me);
-          localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(me));
+          localStorage.setItem(
+            LOCAL_STORAGE_USER_KEY,
+            JSON.stringify(toStoredProfile(me)),
+          );
           setAccessToken(storedToken, me);
         } else {
-          // Intentar refresh silencioso vía cookie HttpOnly
+          // Intentar refresh silencioso vía cookie HttpOnly del backend
           try {
             const refreshRes = await authApi.refresh();
             setTokenState(refreshRes.accessToken);
             setUser(refreshRes.usuario);
             localStorage.setItem(
               LOCAL_STORAGE_USER_KEY,
-              JSON.stringify(refreshRes.usuario),
+              JSON.stringify(toStoredProfile(refreshRes.usuario)),
             );
+            // TSK-1005: setAccessToken sincroniza las cookies httpOnly via /api/session
             setAccessToken(refreshRes.accessToken, refreshRes.usuario);
           } catch {
-            // No hay sesión activa previa
+            // No hay sesión activa — limpiar todo
             setUser(null);
             setTokenState(null);
             setAccessToken(null);
@@ -89,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (err) {
-        console.warn('Error inicializando sesión:', err);
+        console.warn("Error inicializando sesión:", err);
         setUser(null);
         setTokenState(null);
         setAccessToken(null);
@@ -109,21 +145,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await authApi.login(credentials);
         setTokenState(response.accessToken);
         setUser(response.usuario);
+        // TSK-1005: cookies httpOnly vía Route Handler; TSK-1006: perfil reducido
         setAccessToken(response.accessToken, response.usuario);
         localStorage.setItem(
           LOCAL_STORAGE_USER_KEY,
-          JSON.stringify(response.usuario),
+          JSON.stringify(toStoredProfile(response.usuario)),
         );
 
         toast.success(`¡Bienvenido(a), ${response.usuario.nombreCompleto}!`);
 
         // Redirección inteligente por rol
-        if (response.usuario.rol === 'SUPERADMIN') {
-          router.push('/admin');
-        } else if (response.usuario.rol === 'GESTOR_ESPACIO') {
-          router.push('/gestion');
+        if (response.usuario.rol === "SUPERADMIN") {
+          router.push("/admin");
+        } else if (response.usuario.rol === "GESTOR_ESPACIO") {
+          router.push("/gestion");
         } else {
-          router.push('/catalogo');
+          router.push("/catalogo");
         }
       } catch (error: unknown) {
         const message =
@@ -131,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             ? error.message
             : error instanceof Error
               ? error.message
-              : 'Error al iniciar sesión';
+              : "Error al iniciar sesión";
         toast.error(message);
         throw error;
       } finally {
@@ -148,21 +185,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await authApi.register(data);
         setTokenState(response.accessToken);
         setUser(response.usuario);
+        // TSK-1005 + TSK-1006
         setAccessToken(response.accessToken, response.usuario);
         localStorage.setItem(
           LOCAL_STORAGE_USER_KEY,
-          JSON.stringify(response.usuario),
+          JSON.stringify(toStoredProfile(response.usuario)),
         );
 
-        toast.success('Cuenta institucional creada con éxito');
-        router.push('/catalogo');
+        toast.success("Cuenta institucional creada con éxito");
+        router.push("/catalogo");
       } catch (error: unknown) {
         const message =
           error instanceof ApiError
             ? error.message
             : error instanceof Error
               ? error.message
-              : 'Error al registrar usuario';
+              : "Error al registrar usuario";
         toast.error(message);
         throw error;
       } finally {
@@ -179,10 +217,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       setTokenState(null);
+      // TSK-1005: limpia cookies httpOnly via /api/session; TSK-1006: limpia storage
       setAccessToken(null);
       localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
-      toast.info('Sesión cerrada correctamente');
-      router.push('/login');
+      toast.info("Sesión cerrada correctamente");
+      router.push("/login");
       setIsLoading(false);
     }
   }, [router]);
@@ -192,39 +231,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authApi.refresh();
       setTokenState(response.accessToken);
       setUser(response.usuario);
+      // TSK-1005 + TSK-1006
       setAccessToken(response.accessToken, response.usuario);
       localStorage.setItem(
         LOCAL_STORAGE_USER_KEY,
-        JSON.stringify(response.usuario),
+        JSON.stringify(toStoredProfile(response.usuario)),
       );
     } catch {
       setUser(null);
       setTokenState(null);
       setAccessToken(null);
       localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
-      router.push('/login');
+      router.push("/login");
     }
   }, [router]);
 
-  // Helpers RBAC computados
-  const isSuperAdmin = useMemo(() => user?.rol === 'SUPERADMIN', [user]);
+  // ── RBAC helpers computados con useMemo ─────────────────────────────────────
+  const isSuperAdmin = useMemo(() => user?.rol === "SUPERADMIN", [user]);
   const isGestor = useMemo(
-    () => user?.rol === 'GESTOR_ESPACIO' || user?.rol === 'SUPERADMIN',
+    () => user?.rol === "GESTOR_ESPACIO" || user?.rol === "SUPERADMIN",
     [user],
   );
   const isDocenteOrAdmin = useMemo(
     () =>
-      user?.rol === 'DOCENTE' ||
-      user?.rol === 'ADMINISTRATIVO' ||
-      user?.rol === 'SUPERADMIN',
+      user?.rol === "DOCENTE" ||
+      user?.rol === "ADMINISTRATIVO" ||
+      user?.rol === "SUPERADMIN",
     [user],
   );
-  const isEstudiante = useMemo(() => user?.rol === 'ESTUDIANTE', [user]);
+  const isDocente = useMemo(
+    () => user?.rol === "DOCENTE" || user?.rol === "SUPERADMIN",
+    [user],
+  );
+  const isAdministrativo = useMemo(
+    () => user?.rol === "ADMINISTRATIVO" || user?.rol === "SUPERADMIN",
+    [user],
+  );
+  const isEstudiante = useMemo(() => user?.rol === "ESTUDIANTE", [user]);
 
   const hasRole = useCallback(
     (...roles: RolUsuario[]): boolean => {
       if (!user) return false;
-      if (user.rol === 'SUPERADMIN') return true;
+      if (user.rol === "SUPERADMIN") return true;
       return roles.includes(user.rol);
     },
     [user],
@@ -248,6 +296,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isSuperAdmin,
       isGestor,
       isDocenteOrAdmin,
+      isDocente,
+      isAdministrativo,
       isEstudiante,
       hasRole,
       inhabilitadoParaReservar,
@@ -275,7 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth debe ser utilizado dentro de un AuthProvider');
+    throw new Error("useAuth debe ser utilizado dentro de un AuthProvider");
   }
   return context;
 }

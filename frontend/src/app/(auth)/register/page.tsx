@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { Resolver, useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import React, { useState } from "react";
+import Link from "next/link";
+import { Resolver, useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Mail,
   Lock,
@@ -17,10 +17,10 @@ import {
   ArrowRight,
   ShieldCheck,
   Building2,
-} from 'lucide-react';
-import { RegisterSchema, RegisterInput } from '../../../schemas/usuario.schema';
-import { useAuth } from '../../../lib/auth-context';
-import { ApiError } from '../../../lib/api';
+} from "lucide-react";
+import { RegisterSchema, RegisterInput } from "../../../schemas/usuario.schema";
+import { useAuth } from "../../../lib/auth-context";
+import { ApiError } from "../../../lib/api";
 
 export default function RegisterPage() {
   const { register: registerUser } = useAuth();
@@ -35,16 +35,15 @@ export default function RegisterPage() {
   } = useForm<RegisterInput>({
     resolver: zodResolver(RegisterSchema) as unknown as Resolver<RegisterInput>,
     defaultValues: {
-      nombreCompleto: '',
-      documentoIdentidad: '',
-      email: '',
-      telefono: '',
-      rol: 'ESTUDIANTE',
-      password: '',
+      nombreCompleto: "",
+      documentoIdentidad: "",
+      email: "",
+      telefono: "",
+      password: "",
     },
   });
 
-  const currentPassword = useWatch({ control, name: 'password' }) || '';
+  const currentPassword = useWatch({ control, name: "password" }) || "";
 
   const hasUpper = /[A-Z]/.test(currentPassword);
   const hasLower = /[a-z]/.test(currentPassword);
@@ -62,7 +61,7 @@ export default function RegisterPage() {
           ? err.message
           : err instanceof Error
             ? err.message
-            : 'Error al registrar usuario. Verifique los datos ingresados.';
+            : "Error al registrar usuario. Verifique los datos ingresados.";
       setErrorMessage(message);
     }
   };
@@ -84,7 +83,8 @@ export default function RegisterPage() {
           Politécnico Jaime Isaza Cadavid
         </p>
         <p className="mt-1 text-center text-xs text-slate-500">
-          Crea tu cuenta institucional para solicitar y gestionar reservas de espacios
+          Crea tu cuenta institucional para solicitar y gestionar reservas de
+          espacios
         </p>
       </div>
 
@@ -114,11 +114,11 @@ export default function RegisterPage() {
                   id="nombreCompleto"
                   type="text"
                   placeholder="Ej: Laura Gómez Cardona"
-                  {...register('nombreCompleto')}
+                  {...register("nombreCompleto")}
                   className={`block w-full pl-10 pr-3 py-2 text-sm rounded-xl border bg-slate-50/50 focus:bg-white transition-colors outline-none focus:ring-2 ${
                     errors.nombreCompleto
-                      ? 'border-rose-300 text-rose-900 focus:ring-rose-500'
-                      : 'border-slate-200 text-slate-900 focus:ring-emerald-600'
+                      ? "border-rose-300 text-rose-900 focus:ring-rose-500"
+                      : "border-slate-200 text-slate-900 focus:ring-emerald-600"
                   }`}
                 />
               </div>
@@ -146,11 +146,11 @@ export default function RegisterPage() {
                     id="documentoIdentidad"
                     type="text"
                     placeholder="Ej: 1020304050"
-                    {...register('documentoIdentidad')}
+                    {...register("documentoIdentidad")}
                     className={`block w-full pl-10 pr-3 py-2 text-sm rounded-xl border bg-slate-50/50 focus:bg-white transition-colors outline-none focus:ring-2 ${
                       errors.documentoIdentidad
-                        ? 'border-rose-300 text-rose-900 focus:ring-rose-500'
-                        : 'border-slate-200 text-slate-900 focus:ring-emerald-600'
+                        ? "border-rose-300 text-rose-900 focus:ring-rose-500"
+                        : "border-slate-200 text-slate-900 focus:ring-emerald-600"
                     }`}
                   />
                 </div>
@@ -161,32 +161,20 @@ export default function RegisterPage() {
                 )}
               </div>
 
+              {/* TSK-1002: el rol no es seleccionable en el registro.
+                  Siempre se asigna ESTUDIANTE en el backend.
+                  Un SUPERADMIN puede elevarlo desde el panel de administración. */}
               <div>
-                <label
-                  htmlFor="rol"
-                  className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1"
-                >
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
                   Rol Institucional
                 </label>
-                <div className="relative rounded-xl shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <GraduationCap className="h-4 w-4" />
-                  </div>
-                  <select
-                    id="rol"
-                    {...register('rol')}
-                    className="block w-full pl-10 pr-3 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 transition-colors outline-none focus:ring-2 focus:ring-emerald-600"
-                  >
-                    <option value="ESTUDIANTE">Estudiante</option>
-                    <option value="DOCENTE">Docente</option>
-                    <option value="ADMINISTRATIVO">Administrativo</option>
-                  </select>
+                <div className="flex items-center h-9 pl-3.5 pr-3 text-sm rounded-xl border border-slate-200 bg-slate-100 text-slate-500 space-x-2">
+                  <GraduationCap className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                  <span>Estudiante (asignado automáticamente)</span>
                 </div>
-                {errors.rol && (
-                  <p className="mt-1 text-xs text-rose-600 font-medium">
-                    {errors.rol.message}
-                  </p>
-                )}
+                <p className="mt-1 text-[10px] text-slate-400">
+                  El rol puede ajustarse por un administrador posteriormente.
+                </p>
               </div>
             </div>
 
@@ -208,11 +196,11 @@ export default function RegisterPage() {
                     type="email"
                     placeholder="usuario@elpoli.edu.co"
                     autoComplete="email"
-                    {...register('email')}
+                    {...register("email")}
                     className={`block w-full pl-10 pr-3 py-2 text-sm rounded-xl border bg-slate-50/50 focus:bg-white transition-colors outline-none focus:ring-2 ${
                       errors.email
-                        ? 'border-rose-300 text-rose-900 focus:ring-rose-500'
-                        : 'border-slate-200 text-slate-900 focus:ring-emerald-600'
+                        ? "border-rose-300 text-rose-900 focus:ring-rose-500"
+                        : "border-slate-200 text-slate-900 focus:ring-emerald-600"
                     }`}
                   />
                 </div>
@@ -238,11 +226,11 @@ export default function RegisterPage() {
                     id="telefono"
                     type="tel"
                     placeholder="+573001234567"
-                    {...register('telefono')}
+                    {...register("telefono")}
                     className={`block w-full pl-10 pr-3 py-2 text-sm rounded-xl border bg-slate-50/50 focus:bg-white transition-colors outline-none focus:ring-2 ${
                       errors.telefono
-                        ? 'border-rose-300 text-rose-900 focus:ring-rose-500'
-                        : 'border-slate-200 text-slate-900 focus:ring-emerald-600'
+                        ? "border-rose-300 text-rose-900 focus:ring-rose-500"
+                        : "border-slate-200 text-slate-900 focus:ring-emerald-600"
                     }`}
                   />
                 </div>
@@ -268,14 +256,14 @@ export default function RegisterPage() {
                 </div>
                 <input
                   id="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   autoComplete="new-password"
-                  {...register('password')}
+                  {...register("password")}
                   className={`block w-full pl-10 pr-10 py-2 text-sm rounded-xl border bg-slate-50/50 focus:bg-white transition-colors outline-none focus:ring-2 ${
                     errors.password
-                      ? 'border-rose-300 text-rose-900 focus:ring-rose-500'
-                      : 'border-slate-200 text-slate-900 focus:ring-emerald-600'
+                      ? "border-rose-300 text-rose-900 focus:ring-rose-500"
+                      : "border-slate-200 text-slate-900 focus:ring-emerald-600"
                   }`}
                 />
                 <button
@@ -299,20 +287,27 @@ export default function RegisterPage() {
 
               {/* Indicadores visuales de requisitos de contraseña */}
               <div className="mt-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] grid grid-cols-2 gap-1 text-slate-600">
-                <div className={hasMinLength ? 'text-emerald-700 font-medium' : ''}>
-                  {hasMinLength ? '✓' : '○'} Mínimo 8 caracteres
+                <div
+                  className={hasMinLength ? "text-emerald-700 font-medium" : ""}
+                >
+                  {hasMinLength ? "✓" : "○"} Mínimo 8 caracteres
                 </div>
-                <div className={hasUpper ? 'text-emerald-700 font-medium' : ''}>
-                  {hasUpper ? '✓' : '○'} Una mayúscula (A-Z)
+                <div className={hasUpper ? "text-emerald-700 font-medium" : ""}>
+                  {hasUpper ? "✓" : "○"} Una mayúscula (A-Z)
                 </div>
-                <div className={hasLower ? 'text-emerald-700 font-medium' : ''}>
-                  {hasLower ? '✓' : '○'} Una minúscula (a-z)
+                <div className={hasLower ? "text-emerald-700 font-medium" : ""}>
+                  {hasLower ? "✓" : "○"} Una minúscula (a-z)
                 </div>
-                <div className={hasNumber ? 'text-emerald-700 font-medium' : ''}>
-                  {hasNumber ? '✓' : '○'} Un número (0-9)
+                <div
+                  className={hasNumber ? "text-emerald-700 font-medium" : ""}
+                >
+                  {hasNumber ? "✓" : "○"} Un número (0-9)
                 </div>
-                <div className={`col-span-2 ${hasSpecial ? 'text-emerald-700 font-medium' : ''}`}>
-                  {hasSpecial ? '✓' : '○'} Un carácter especial (@, $, !, %, *, ?, &)
+                <div
+                  className={`col-span-2 ${hasSpecial ? "text-emerald-700 font-medium" : ""}`}
+                >
+                  {hasSpecial ? "✓" : "○"} Un carácter especial (@, $, !, %, *,
+                  ?, &)
                 </div>
               </div>
             </div>
@@ -342,7 +337,7 @@ export default function RegisterPage() {
           {/* Links y pie */}
           <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col space-y-3">
             <div className="text-center text-xs text-slate-600">
-              ¿Ya tienes una cuenta institucional?{' '}
+              ¿Ya tienes una cuenta institucional?{" "}
               <Link
                 href="/login"
                 className="font-semibold text-emerald-700 hover:text-emerald-800 underline underline-offset-2"
@@ -364,7 +359,8 @@ export default function RegisterPage() {
           <div className="mt-6 p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center space-x-2 text-[11px] text-slate-500">
             <ShieldCheck className="h-4 w-4 text-emerald-600 flex-shrink-0" />
             <span>
-              Registro exclusivo con correo institucional <strong>@elpoli.edu.co</strong>.
+              Registro exclusivo con correo institucional{" "}
+              <strong>@elpoli.edu.co</strong>.
             </span>
           </div>
         </div>

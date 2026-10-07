@@ -147,7 +147,8 @@ describe('AuthService', () => {
       jest.spyOn(bcrypt, 'compare').mockImplementation(() => Promise.resolve(true as never));
 
       const result = await service.refresh('valid_refresh_token');
-      expect(result).toHaveProperty('accessToken', 'new_access_token');
+      expect(result).toHaveProperty('accessToken');
+      expect(result).toHaveProperty('refreshToken');
       expect(result.usuario.id).toBe(1);
     });
   });

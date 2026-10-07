@@ -8,78 +8,93 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { UsuariosService } from './usuarios.service';
-import { Roles, CurrentUser } from '../../common/decorators';
+} from "@nestjs/common";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from "@nestjs/swagger";
+import { UsuariosService } from "./usuarios.service";
+import { Roles, CurrentUser } from "../../common/decorators";
+import { parsePaginationQuery } from "../../schemas/pagination.schema";
 
-@ApiTags('Usuarios Institucionales')
-@Controller('usuarios')
+@ApiTags("Usuarios Institucionales")
+@Controller("usuarios")
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
   @Get()
-  @Roles('SUPERADMIN')
+  @Roles("SUPERADMIN")
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Lista todos los usuarios registrados (Solo SUPERADMIN)' })
-  @ApiQuery({ name: 'search', required: false, type: String })
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
-  @ApiResponse({ status: 200, description: 'Usuarios obtenidos exitosamente' })
-  @ApiResponse({ status: 403, description: 'Permisos insuficientes' })
+  @ApiOperation({
+    summary: "Lista todos los usuarios registrados (Solo SUPERADMIN)",
+  })
+  @ApiQuery({ name: "search", required: false, type: String })
+  @ApiQuery({ name: "page", required: false, type: Number, example: 1 })
+  @ApiQuery({ name: "limit", required: false, type: Number, example: 20 })
+  @ApiResponse({ status: 200, description: "Usuarios obtenidos exitosamente" })
+  @ApiResponse({ status: 403, description: "Permisos insuficientes" })
   async findAll(
-    @Query('search') search?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query("search") search?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
   ) {
-    return this.usuariosService.findAll({
-      search,
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
-    });
+    // TSK-1007: validación de paginación — NaN y valores fuera de rango devuelven 400
+    const pagination = parsePaginationQuery(page, limit);
+    return this.usuariosService.findAll({ search, ...pagination });
   }
 
-  @Get(':id')
-  @Roles('GESTOR_ESPACIO', 'SUPERADMIN')
+  @Get(":id")
+  @Roles("GESTOR_ESPACIO", "SUPERADMIN")
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Obtiene el detalle de un usuario por ID' })
-  @ApiResponse({ status: 200, description: 'Usuario encontrado' })
-  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
-  async findById(@Param('id', ParseIntPipe) id: number) {
+  @ApiOperation({ summary: "Obtiene el detalle de un usuario por ID" })
+  @ApiResponse({ status: 200, description: "Usuario encontrado" })
+  @ApiResponse({ status: 404, description: "Usuario no encontrado" })
+  async findById(@Param("id", ParseIntPipe) id: number) {
     return this.usuariosService.findById(id);
   }
 
-  @Patch(':id/inhabilitar')
-  @Roles('GESTOR_ESPACIO', 'SUPERADMIN')
+  @Patch(":id/inhabilitar")
+  @Roles("GESTOR_ESPACIO", "SUPERADMIN")
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Inhabilita a un usuario para solicitar reservas' })
-  @ApiResponse({ status: 200, description: 'Usuario inhabilitado exitosamente' })
-  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
-  @ApiResponse({ status: 403, description: 'Permisos insuficientes' })
+  @ApiOperation({ summary: "Inhabilita a un usuario para solicitar reservas" })
+  @ApiResponse({
+    status: 200,
+    description: "Usuario inhabilitado exitosamente",
+  })
+  @ApiResponse({ status: 404, description: "Usuario no encontrado" })
+  @ApiResponse({ status: 403, description: "Permisos insuficientes" })
   async inhabilitar(
-    @Param('id', ParseIntPipe) id: number,
-    @Body('motivo') motivo: string,
-    @CurrentUser('sub') gestorId: number,
+    @Param("id", ParseIntPipe) id: number,
+    @Body("motivo") motivo: string,
+    @CurrentUser("sub") gestorId: number,
   ) {
     return this.usuariosService.inhabilitar(
       id,
-      motivo || 'Inhabilitación manual administrativa',
+      motivo || "Inhabilitación manual administrativa",
       gestorId,
     );
   }
 
-  @Patch(':id/rehabilitar')
-  @Roles('GESTOR_ESPACIO', 'SUPERADMIN')
+  @Patch(":id/rehabilitar")
+  @Roles("GESTOR_ESPACIO", "SUPERADMIN")
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Remueve la sanción y rehabilita a un usuario para reservar' })
-  @ApiResponse({ status: 200, description: 'Usuario rehabilitado exitosamente' })
-  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
-  @ApiResponse({ status: 403, description: 'Permisos insuficientes' })
+  @ApiOperation({
+    summary: "Remueve la sanción y rehabilita a un usuario para reservar",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Usuario rehabilitado exitosamente",
+  })
+  @ApiResponse({ status: 404, description: "Usuario no encontrado" })
+  @ApiResponse({ status: 403, description: "Permisos insuficientes" })
   async rehabilitar(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser('sub') gestorId: number,
+    @Param("id", ParseIntPipe) id: number,
+    @CurrentUser("sub") gestorId: number,
   ) {
     return this.usuariosService.rehabilitar(id, gestorId);
   }

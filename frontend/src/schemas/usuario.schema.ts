@@ -1,11 +1,11 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const RolUsuarioEnum = z.enum([
-  'ESTUDIANTE',
-  'DOCENTE',
-  'ADMINISTRATIVO',
-  'GESTOR_ESPACIO',
-  'SUPERADMIN',
+  "ESTUDIANTE",
+  "DOCENTE",
+  "ADMINISTRATIVO",
+  "GESTOR_ESPACIO",
+  "SUPERADMIN",
 ]);
 export type RolUsuario = z.infer<typeof RolUsuarioEnum>;
 
@@ -14,36 +14,45 @@ export const RegisterSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .email({ message: 'Formato de correo electrónico inválido' })
-    .endsWith('@elpoli.edu.co', {
-      message: 'El correo debe ser institucional con dominio @elpoli.edu.co',
+    .email({ message: "Formato de correo electrónico inválido" })
+    .endsWith("@elpoli.edu.co", {
+      message: "El correo debe pertenecer al dominio institucional (@elpoli.edu.co)",
     }),
   password: z
     .string()
-    .min(8, { message: 'La contraseña debe tener mínimo 8 caracteres' })
-    .max(64, { message: 'La contraseña no puede exceder 64 caracteres' })
-    .regex(/[A-Z]/, { message: 'Debe contener al menos una letra mayúscula' })
-    .regex(/[a-z]/, { message: 'Debe contener al menos una letra minúscula' })
-    .regex(/[0-9]/, { message: 'Debe contener al menos un número' })
+    .min(8, { message: "La contraseña debe tener mínimo 8 caracteres" })
+    .max(64, { message: "La contraseña no puede exceder 64 caracteres" })
+    .regex(/[A-Z]/, { message: "Debe contener al menos una letra mayúscula" })
+    .regex(/[a-z]/, { message: "Debe contener al menos una letra minúscula" })
+    .regex(/[0-9]/, { message: "Debe contener al menos un número" })
     .regex(/[^A-Za-z0-9]/, {
-      message: 'Debe contener al menos un carácter especial (@, $, !, %, *, ?, &)',
+      message:
+        "Debe contener al menos un carácter especial (@, $, !, %, *, ?, &)",
     }),
   nombreCompleto: z
     .string()
     .trim()
-    .min(3, { message: 'El nombre completo debe tener al menos 3 caracteres' })
-    .max(100, { message: 'El nombre completo no puede superar 100 caracteres' }),
-  rol: RolUsuarioEnum.default('ESTUDIANTE'),
+    .min(3, { message: "El nombre completo debe tener al menos 3 caracteres" })
+    .max(100, {
+      message: "El nombre completo no puede superar 100 caracteres",
+    }),
   documentoIdentidad: z
     .string()
     .trim()
-    .min(6, { message: 'El documento de identidad debe tener al menos 6 caracteres' })
-    .max(20, { message: 'El documento de identidad no puede superar 20 caracteres' }),
+    .min(6, {
+      message: "El documento de identidad debe tener al menos 6 caracteres",
+    })
+    .max(20, {
+      message: "El documento de identidad no puede superar 20 caracteres",
+    }),
   telefono: z
     .string()
     .trim()
-    .regex(/^\+?[0-9]{7,15}$/, { message: 'Formato de teléfono inválido' })
+    .regex(/^\+?[0-9]{7,15}$/, { message: "Formato de teléfono inválido" })
     .optional(),
+  // El campo 'rol' NO forma parte del contrato público de registro.
+  // El rol se asigna siempre como ESTUDIANTE en el backend.
+  // La elevación de roles es exclusiva de SUPERADMIN vía PATCH /api/usuarios/:id.
 });
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 
@@ -52,13 +61,11 @@ export const LoginSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .email({ message: 'Formato de correo inválido' })
-    .endsWith('@elpoli.edu.co', {
-      message: 'El correo debe ser institucional (@elpoli.edu.co)',
+    .email({ message: "Formato de correo inválido" })
+    .endsWith("@elpoli.edu.co", {
+      message: "El correo debe pertenecer al dominio institucional (@elpoli.edu.co)",
     }),
-  password: z
-    .string()
-    .min(1, { message: 'La contraseña es obligatoria' }),
+  password: z.string().min(1, { message: "La contraseña es obligatoria" }),
 });
 export type LoginInput = z.infer<typeof LoginSchema>;
 

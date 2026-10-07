@@ -74,4 +74,26 @@ describe('DisponibilidadService - Pruebas Unitarias de Colisión', () => {
       service.validarDisponibilidadTx(mockTx, 1, tIni, tFin),
     ).resolves.not.toThrow();
   });
+
+  it('debe convertir UTC a America/Bogota (UTC-5) para buscar la clase fija con hora local', async () => {
+    mockTx.espacio.findUnique.mockResolvedValue({ id: 1, estado: 'ACTIVO' });
+    mockTx.periodoAcademico.findFirst.mockResolvedValue({ id: 10, estado: 'ACTIVO' });
+    mockTx.claseFija.findFirst.mockResolvedValue(null);
+
+    // Lunes 2026-09-07 08:30 hora Colombia = 13:30 UTC
+    const tIni = new Date('2026-09-07T13:30:00.000Z');
+    const tFin = new Date('2026-09-07T15:30:00.000Z');
+
+    await service.validarDisponibilidadTx(mockTx, 1, tIni, tFin);
+
+    expect(mockTx.claseFija.findFirst).toHaveBeenCalledWith({
+      where: {
+        espacioId: 1,
+        periodoId: 10,
+        diaSemana: 1, // Lunes
+        horaInicio: { lt: '10:30' },
+        horaFin: { gt: '08:30' },
+      },
+    });
+  });
 });

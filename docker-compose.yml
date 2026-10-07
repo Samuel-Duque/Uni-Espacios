@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:10.11
+    container_name: uniespacios-mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-UniEspaciosRoot2026!}
+      MYSQL_DATABASE: ${DB_NAME:-uniespacios_db}
+      MYSQL_USER: ${DB_USER:-uniespacios_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-UniEspacios2026Secure!}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-UniEspaciosRoot2026!}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - uniespacios-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: uniespacios-backend
+    restart: always
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: mysql://${DB_USER:-uniespacios_user}:${DB_PASSWORD:-UniEspacios2026Secure!}@mariadb:3306/${DB_NAME:-uniespacios_db}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-UniEspacios_SuperSecret_JwtKey_2026_ChangeInProduction!}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-UniEspacios_SuperSecret_RefreshKey_2026_ChangeInProduction!}
+      JWT_ACCESS_EXPIRATION: 15m
+      JWT_REFRESH_EXPIRATION: 7d
+      FRONTEND_URL: http://localhost:3000
+      THROTTLE_TTL: 60000
+      THROTTLE_LIMIT: 100
+      AUTH_THROTTLE_TTL: 60000
+      AUTH_THROTTLE_LIMIT: 5
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:4000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - uniespacios-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: uniespacios-frontend
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    ports:
+      - "3000:3000"
+    networks:
+      - uniespacios-network
+
+volumes:
+  mariadb_data:
+    driver: local
+
+networks:
+  uniespacios-network:
+    driver: bridge

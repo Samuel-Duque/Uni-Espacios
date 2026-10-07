@@ -116,10 +116,67 @@ export class ReservasService {
     }
   }
 
+  /**
+   * A-04: Procesa cancelaciones automáticas por inasistencia (No-Show).
+   * Si T_actual > T_ini + 20 minutos y la reserva APROBADA no tiene acta de CHECK_IN,
+   * se cancela automáticamente liberando el horario.
+   */
+  async procesarNoShows(): Promise<{ canceladas: number; ids: number[] }> {
+    const limiteNoShow = new Date(Date.now() - 20 * 60 * 1000);
+
+    const expiradas = await this.prisma.reserva.findMany({
+      where: {
+        estado: 'APROBADA',
+        fechaInicio: { lt: limiteNoShow },
+        verificaciones: {
+          none: {
+            tipo: 'CHECK_IN',
+          },
+        },
+      },
+      select: {
+        id: true,
+        usuarioId: true,
+        espacioId: true,
+        fechaInicio: true,
+      },
+    });
+
+    if (expiradas.length === 0) {
+      return { canceladas: 0, ids: [] };
+    }
+
+    const ids = expiradas.map((r) => r.id);
+
+    await this.prisma.reserva.updateMany({
+      where: { id: { in: ids } },
+      data: { estado: 'CANCELADA' },
+    });
+
+    for (const r of expiradas) {
+      await this.auditoriaService.registrar({
+        usuarioId: r.usuarioId || 0,
+        accion: 'CANCELACION_NO_SHOW',
+        entidad: 'Reserva',
+        entidadId: r.id,
+        detalles: {
+          motivo: 'Cancelación automática por inasistencia (No-Show: superó ventana de 20 minutos tras inicio sin Check-In)',
+          fechaInicio: r.fechaInicio ? r.fechaInicio.toISOString() : new Date().toISOString(),
+          espacioId: r.espacioId,
+        },
+      });
+    }
+
+    return { canceladas: ids.length, ids };
+  }
+
   async findMisReservas(
     usuarioId: number,
     query?: { estado?: string; page?: number; limit?: number },
   ) {
+    // Verificación lazy de No-Shows
+    await this.procesarNoShows();
+
     const page = query?.page || 1;
     const limit = query?.limit || 10;
     const skip = (page - 1) * limit;
@@ -178,6 +235,9 @@ export class ReservasService {
     page?: number;
     limit?: number;
   }) {
+    // Verificación lazy de No-Shows
+    await this.procesarNoShows();
+
     const page = query?.page || 1;
     const limit = query?.limit || 10;
     const skip = (page - 1) * limit;

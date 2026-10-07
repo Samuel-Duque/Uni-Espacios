@@ -215,8 +215,8 @@ describe('DisponibilidadService', () => {
         {
           id: 20,
           espacioId: 1,
-          fechaInicio: new Date('2026-09-15T14:00:00.000Z'),
-          fechaFin: new Date('2026-09-15T16:00:00.000Z'),
+          fechaInicio: new Date('2026-09-15T14:00:00-05:00'),
+          fechaFin: new Date('2026-09-15T16:00:00-05:00'),
           motivo: 'Taller Extraordinario',
           estado: 'APROBADA',
         },

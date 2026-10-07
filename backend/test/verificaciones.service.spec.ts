@@ -25,6 +25,7 @@ describe('VerificacionesService', () => {
       verificacionInventario: {
         create: jest.fn(),
         findMany: jest.fn(),
+        findFirst: jest.fn(),
         count: jest.fn(),
       },
       auditoria: {
@@ -155,6 +156,54 @@ describe('VerificacionesService', () => {
         where: { id: 1 },
         data: { estado: 'FINALIZADA' },
       });
+    });
+
+    it('no debe sancionar si el daño ya fue documentado en el Check-In (C-03)', async () => {
+      prisma.reserva.findUnique.mockResolvedValue(mockReservaEnUso);
+      // Simular que en el Check-In ya estaba reportado como PRESENTE_DANADO
+      prisma.verificacionInventario.findFirst.mockResolvedValue({
+        id: 1,
+        tipo: 'CHECK_IN',
+        detalles: [
+          { itemInventarioId: 1, estadoItem: 'PRESENTE_DANADO', cantidadEncontrada: 1 },
+        ],
+      });
+      prisma.verificacionInventario.create.mockResolvedValue({
+        id: 2,
+        tipo: 'CHECK_OUT',
+        estadoGeneral: 'CONFORME',
+      });
+      prisma.reserva.update.mockResolvedValue({ ...mockReservaEnUso, estado: 'FINALIZADA' });
+
+      const dto = {
+        items: [
+          {
+            itemInventarioId: 1,
+            estadoItem: 'PRESENTE_DANADO' as const,
+            cantidadEncontrada: 1,
+          },
+        ],
+      };
+
+      await service.registrarCheckOut(1, 10, dto, 'ESTUDIANTE');
+      // No debe sancionar al usuario porque el daño ya existía en Check-In
+      expect(prisma.usuario.update).not.toHaveBeenCalled();
+      expect(prisma.reserva.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { estado: 'FINALIZADA' },
+      });
+    });
+
+    it('debe rechazar el Check-Out si la ventana ha expirado (más de 30m tras T_fin) (A-02)', async () => {
+      const reservaExpirada = {
+        ...mockReservaEnUso,
+        fechaFin: new Date(Date.now() - 35 * 60 * 1000), // Hace 35 minutos
+      };
+      prisma.reserva.findUnique.mockResolvedValue(reservaExpirada);
+
+      await expect(
+        service.registrarCheckOut(1, 10, { items: [] }, 'ESTUDIANTE'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

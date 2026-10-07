@@ -19,10 +19,11 @@ describe('ReservasService', () => {
       },
       reserva: {
         create: jest.fn(),
-        findMany: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(),
         count: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
       aprobacion: {
         create: jest.fn(),
@@ -227,7 +228,10 @@ describe('ReservasService', () => {
 
     it('debe paginar y retornar reservas en findMisReservas', async () => {
       prisma.reserva.count.mockResolvedValue(1);
-      prisma.reserva.findMany.mockResolvedValue([{ id: 100 }]);
+      prisma.reserva.findMany.mockImplementation((args: any) => {
+        if (args?.where?.verificaciones) return Promise.resolve([]);
+        return Promise.resolve([{ id: 100 }]);
+      });
 
       const result = await service.findMisReservas(1, { page: 1, limit: 10 });
       expect(result.meta.total).toBe(1);
@@ -236,11 +240,40 @@ describe('ReservasService', () => {
 
     it('debe paginar y filtrar reservas en findGestion', async () => {
       prisma.reserva.count.mockResolvedValue(2);
-      prisma.reserva.findMany.mockResolvedValue([{ id: 100 }, { id: 101 }]);
+      prisma.reserva.findMany.mockImplementation((args: any) => {
+        if (args?.where?.verificaciones) return Promise.resolve([]);
+        return Promise.resolve([{ id: 100 }, { id: 101 }]);
+      });
 
       const result = await service.findGestion({ sedeId: 1, page: 1, limit: 10 });
       expect(result.meta.total).toBe(2);
       expect(result.data).toHaveLength(2);
+    });
+
+    it('debe procesar no-shows y cancelar reservas aprobadas expiradas sin check-in (A-04)', async () => {
+      const mockExpiradas = [
+        {
+          id: 50,
+          usuarioId: 10,
+          espacioId: 1,
+          fechaInicio: new Date(Date.now() - 30 * 60 * 1000),
+        },
+      ];
+      prisma.reserva.findMany.mockResolvedValueOnce(mockExpiradas);
+
+      const resultado = await service.procesarNoShows();
+      expect(resultado.canceladas).toBe(1);
+      expect(resultado.ids).toEqual([50]);
+      expect(prisma.reserva.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: [50] } },
+        data: { estado: 'CANCELADA' },
+      });
+      expect(auditoriaService.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accion: 'CANCELACION_NO_SHOW',
+          entidadId: 50,
+        }),
+      );
     });
   });
 });

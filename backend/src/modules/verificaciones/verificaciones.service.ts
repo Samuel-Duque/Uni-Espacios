@@ -144,11 +144,56 @@ export class VerificacionesService {
         );
       }
 
-      // Evaluar novedades (ítems dañados o faltantes)
-      const novedades = dto.items.filter(
-        (i) => i.estadoItem === 'PRESENTE_DANADO' || i.estadoItem === 'FALTANTE',
-      );
-      const hayNovedades = novedades.length > 0;
+      // A-02: Validar ventana máxima de Check-Out (hasta T_fin + 30m)
+      const ahora = new Date();
+      const limiteCheckOut = new Date(reserva.fechaFin.getTime() + 30 * 60 * 1000);
+      if (ahora.getTime() > limiteCheckOut.getTime()) {
+        throw new BadRequestException(
+          'La ventana para registrar el Check-Out ha expirado (máximo 30 minutos posteriores a la hora de finalización)',
+        );
+      }
+
+      // C-03: Recuperar verificación de Check-In para comparar daños preexistentes
+      const checkInVerificacion = await tx.verificacionInventario.findFirst({
+        where: {
+          reservaId,
+          tipo: 'CHECK_IN',
+        },
+        include: {
+          detalles: true,
+        },
+      });
+
+      const checkInDetallesMap = new Map<
+        number,
+        NonNullable<typeof checkInVerificacion>['detalles'][number]
+      >();
+      if (checkInVerificacion) {
+        for (const det of checkInVerificacion.detalles) {
+          checkInDetallesMap.set(det.itemInventarioId, det);
+        }
+      }
+
+      // Evaluar novedades atribuibles (ítems cuyo estado empeoró respecto al Check-In)
+      const novedadesAtribuibles = dto.items.filter((itemOut) => {
+        if (itemOut.estadoItem === 'PRESENTE_OPTIMO') {
+          return false;
+        }
+
+        const detIn = checkInDetallesMap.get(itemOut.itemInventarioId);
+        if (!detIn) {
+          return itemOut.estadoItem === 'PRESENTE_DANADO' || itemOut.estadoItem === 'FALTANTE';
+        }
+
+        // Si ya estaba en el mismo estado defectuoso en Check-In, no es novedad nueva imputable
+        if (detIn.estadoItem === itemOut.estadoItem) {
+          return false;
+        }
+
+        return true;
+      });
+
+      const hayNovedades = novedadesAtribuibles.length > 0;
       const estadoGeneral = hayNovedades ? 'CON_NOVEDADES' : 'CONFORME';
 
       // Crear VerificacionInventario de Check-Out
@@ -175,9 +220,9 @@ export class VerificacionesService {
         },
       });
 
-      // Si se detectaron novedades, actualizar estado de los implementos e inhabilitar preventivamente al usuario
+      // Si se detectaron novedades atribuibles nuevas, actualizar estado de los implementos e inhabilitar al usuario
       if (hayNovedades) {
-        for (const nov of novedades) {
+        for (const nov of novedadesAtribuibles) {
           if (nov.estadoItem === 'PRESENTE_DANADO') {
             await tx.itemInventario.update({
               where: { id: nov.itemInventarioId },
@@ -190,7 +235,7 @@ export class VerificacionesService {
           where: { id: reserva.usuarioId },
           data: {
             inhabilitadoParaReservar: true,
-            motivoInhabilitacion: `Novedad de inventario en Reserva #${reservaId} (${novedades.length} implemento(s) con daño o faltante)`,
+            motivoInhabilitacion: `Novedad de inventario en Reserva #${reservaId} (${novedadesAtribuibles.length} implemento(s) con daño o faltante no documentado en Check-In)`,
           },
         });
       }
@@ -211,7 +256,7 @@ export class VerificacionesService {
           detalles: {
             reservaId,
             estadoGeneral,
-            novedadesCount: novedades.length,
+            novedadesCount: novedadesAtribuibles.length,
             usuarioInhabilitado: hayNovedades ? reserva.usuarioId : null,
           },
         },
