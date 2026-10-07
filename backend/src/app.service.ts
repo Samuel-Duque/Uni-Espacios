@@ -15,6 +15,7 @@ export class AppService {
       return {
         status: 'ok',
         database: 'connected',
+        version: '1.0.1-fix-isolation',
         timestamp: new Date().toISOString(),
       };
     } catch (error: any) {
